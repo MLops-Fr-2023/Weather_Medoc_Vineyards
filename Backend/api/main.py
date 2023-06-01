@@ -1,6 +1,6 @@
 import uvicorn
 from datetime import datetime, timedelta, time, date
-from typing import Annotated, Optional, Union
+from typing import Annotated, Optional, Union, List
 from fastapi.security import OAuth2PasswordBearer, HTTPBasic, HTTPBasicCredentials, OAuth2PasswordRequestForm
 from fastapi import FastAPI, Form, File, Response, Header, UploadFile, Depends, HTTPException, status, Query
 from passlib.context import CryptContext
@@ -15,10 +15,10 @@ from dotenv import dotenv_values
 import pandas as pd
 import requests
 from snowflake.connector import connect, DictCursor
+from methode_sql import *
 
 
 config = {**dotenv_values(".env_API")}
-print(config) # todo : to remove (displaying passwords is not a good practice)
 
 ########## Param Security ##########
 
@@ -30,40 +30,9 @@ ALGORITHM = config['ALGORITHM']
 ACCESS_TOKEN_EXPIRE_MINUTES = config['ACCESS_TOKEN_EXPIRE_MINUTES']
 WEATHER_API_KEY = config['WEATHER_API_KEY']
 
-########### Snowflake #############
-
-USER_SNOWFLAKE = config['USER_SNOWFLAKE']
-PWD_SNOWFLAKE = config['PWD_SNOWFLAKE']
-ACCOUNT_SNOWFLAKE = config['ACCOUNT_SNOWFLAKE']
-WAREHOUSE_SNOWFLAKE = config['WAREHOUSE_SNOWFLAKE']
-DB_SNOWFLAKE = config['DB_SNOWFLAKE']
-SCHEMA_SNOWFLAKE = config['SCHEMA_SNOWFLAKE']
 
 ############### dB ###############
 
-def get_db_connection():
-    db_cnx = connect(
-        user=USER_SNOWFLAKE,
-        password=PWD_SNOWFLAKE,
-        account=ACCOUNT_SNOWFLAKE,
-        warehouse=WAREHOUSE_SNOWFLAKE,
-        database=DB_SNOWFLAKE,
-        schema=SCHEMA_SNOWFLAKE
-    )
-    return db_cnx
-
-def fetch_users_from_db():
-    ctx = get_db_connection()
-    cs = ctx.cursor(DictCursor)
-    try:
-        cs.execute("SELECT * FROM users WHERE active = TRUE")
-        users = cs.fetchall()
-    finally:
-        cs.close()
-
-    return {user['USER_ID']: user for user in users}
-
-users_db = fetch_users_from_db()
 
 cities = ['Margaux', 'Soussan', 'Macau, FR', 'Castelnau-de-Medoc','Lamarque, FR', 'Ludon-Medoc', 'Arsac', 'Brach, FR', 'Saint-Laurent Medoc' ]
 
@@ -83,6 +52,7 @@ class User(BaseModel):
     create_date: Optional[date] = None
     last_upd_date: Optional[date] = None
     active: Optional[bool] = None
+    permissions: Optional[List[str]] = []
 
 class UserInDB(User):
     pwd_hash: str
@@ -125,15 +95,17 @@ description="API for the weather forecasting around Château Margaux",
     }])
 
 
+
 ######### Security Functions ########
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_user(db, user_id: str):        
-    if user_id in db:        
+    if user_id in db: 
         user_dict = db[user_id]
-        user_dict = {key.lower(): value for key, value in user_dict.items()}                
+        user_dict = {key.lower(): value for key, value in user_dict.items()}
+        user_dict['permissions'] = fetch_permissions(user_id)
         return UserInDB(**user_dict)
 
 def get_password_hash(password):
@@ -171,7 +143,13 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(user_id=user_id)
     except JWTError:
         raise credentials_exception
+    users_db = fetch_users_from_db()
+    #permissions = fetch_permissions(user_id)
     user = get_user(users_db, user_id=token_data.user_id)
+    print('user current : ')
+    print(user)
+    print("")
+    
     if user is None:
         raise credentials_exception
     return user
@@ -183,51 +161,6 @@ async def get_current_active_user(
     return current_user
 
 ######### Roads Functions #########
-
-async def fetch_data(columns = columns_mandatory, type_request = 'current', API_KEY = WEATHER_API_KEY):
-    
-    # collect current data and create DataFrame
-    df_current = pd.DataFrame(columns = columns)
-
-    # collect current data and create DataFrame
-    for city in cities:
-        df_tmp = {}
-        params = {
-            'access_key': API_KEY,
-            'query': city 
-        }
-        api_result = requests.get(f'http://api.weatherstack.com/{type_request}', params)
-        response = api_result.json()
-        current = response['current']
-        df_tmp['observation_time'] = response['location']['localtime']
-        df_tmp['temperature'] = current['temperature']
-        df_tmp['weather_code'] = current['weather_code']
-        df_tmp['wind_speed'] = current['wind_speed']
-        df_tmp['wind_degree'] = current['wind_degree']
-        df_tmp['wind_dir'] = current['wind_dir']
-        df_tmp['pressure'] = current['pressure']
-        df_tmp['precip'] = current['precip']
-        df_tmp['humidity'] = current['humidity']
-        df_tmp['cloudcover'] = current['cloudcover']
-        df_tmp['feelslike'] = current['feelslike']
-        df_tmp['uv_index'] = current['uv_index']
-        df_tmp['visibility'] = current['visibility']
-        df_tmp['time'] = current['observation_time']
-        df_tmp['city'] = city
-        df_tmp = pd.DataFrame(data=df_tmp,index=[0])
-        df_current = pd.concat([df_current, df_tmp])
-
-    df_current.reset_index(inplace=True, drop=True)
-
-    # Modify DataFrame to have same strutucre than historical Dataframe
-    for i in range(df_current.shape[0]):
-        x, y = df_current['observation_time'][i].split(' ')
-        df_current['observation_time'][i] = x
-        time = datetime.strptime(df_current['time'][i], "%I:%M %p")
-        df_current['time'][i] = time.strftime('%H:%M')
-
-    return df_current
-
 
 async def fetch_data(columns = columns_mandatory, type_request = 'current', API_KEY = WEATHER_API_KEY):
     
@@ -287,6 +220,7 @@ def read_root():
 async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
+    users_db = fetch_users_from_db()
     user = authenticate_user(users_db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -315,8 +249,11 @@ async def get_data(current_user: Annotated[User, Depends(get_current_active_user
     OUTPUTS : Data updated in Snowflake
     """
     # todo : implement permission checking
-    # if current_user.get_data == True: 
-    print('Identification ok')
+    if not 'get_data' in current_user.permissions:
+        raise Exception(" You don't have the permission"
+        )
+    print('Identification OK')
+
     data_list = await fetch_data()
     print(data_list)
 
