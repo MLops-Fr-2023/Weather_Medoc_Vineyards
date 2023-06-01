@@ -1,0 +1,10 @@
+numpy
+pandas
+uvicorn
+fastapi
+passlib
+python-jose
+python-dotenv
+snowflake-connector-python
+bcrypt
+python-multipart
