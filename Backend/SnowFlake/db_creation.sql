@@ -17,7 +17,7 @@ CREATE TABLE users (
     user_email STRING,
     position STRING,
     create_date DATE,
-    last_upd_date DATE,
+    last_upddate DATE,
     active BOOLEAN
 );
 
@@ -62,8 +62,7 @@ VALUES
 INSERT INTO permissions (permission_id, description)
 VALUES 
 ('training', 'launch model training'),
-('usr_create', 'user creation'),
-('usr_edit', 'user edition'),
+('user_management', 'user management'),
 ('get_data', 'get data from weather api'),
 ('forecast', 'get 7 days forecast');
 
@@ -72,7 +71,7 @@ VALUES
 ('external_client', 'forecast'),
 ('admax', 'forecast'),
 ('admax', 'get_data'),
-('admax', 'add_user'),
+('admax', 'user_management'),
 ('admax', 'training'),
 ('backend', 'training'),
 ('backend', 'get_data');
