@@ -40,6 +40,8 @@ columns_mandatory = ['observation_time','temperature','weather_code','wind_speed
                      'wind_degree','wind_dir','pressure','precip','humidity',
                      'cloudcover','feelslike','uv_index','visibility','time','city']
 
+list_permissions = ['forecast, get_data, training, add_user']
+
 ############## Class ##############
 
 class User(BaseModel):
@@ -53,6 +55,10 @@ class User(BaseModel):
     last_upd_date: Optional[date] = None
     active: Optional[bool] = None
     permissions: Optional[List[str]] = []
+
+class UserPermission(BaseModel):
+    user_id: str
+    permission_id: str
 
 class UserInDB(User):
     pwd_hash: str
@@ -240,6 +246,31 @@ async def read_users_me(
 ):
     return current_user
 
+
+@app.post("/add_user",  name='Modify the caracteristic of a user', tags=['Administrators'])
+async def get_data(user_add : User, current_user: Annotated[User, Depends(get_current_active_user)]):
+
+    """Add a user to the dB.
+    INPUTS :
+         user to add : Dictionnary
+    OUTPUTS : User added in Snowflake - Users dB and User_permission dB
+    """
+    print('')
+    print('ceci est un test')
+    print('')
+    # todo : implement permission checking
+    if not 'add_user' in current_user.permissions:
+        raise Exception(" You don't have the permission")
+    print('Identification OK')
+    for permission in user_add.permissions:
+        if permission not in list_permissions:
+            raise Exception("Unvalid permission")
+    user_add.pwd_hash = pwd_context.hash(user_add.pwd_hash)
+    await add_user_db()
+
+    return {'Message' : 'User successfully added'}
+
+
 @app.post("/get_data",  name='Force weather data update', tags=['Backend'])
 async def get_data(current_user: Annotated[User, Depends(get_current_active_user)]):
 
@@ -259,6 +290,7 @@ async def get_data(current_user: Annotated[User, Depends(get_current_active_user
 
     return {'Message' : 'Data successfully updated'}
 
+
 @app.post("/force_train_model/{city}",  name='Force the train of the model', tags=['Administrators'])
 async def force_train_model(city_data: City, current_user: Annotated[User, Depends(get_current_active_user)]):
 
@@ -268,6 +300,7 @@ async def force_train_model(city_data: City, current_user: Annotated[User, Depen
     OUTPUTS : Data updated in Snowflake
     """
     return {'Message' : 'Not released'}
+
 
 @app.post("/forecast_city/{city}",  name='Forecast 7-days', tags=['Backend'])
 async def forecast(city_data: City, current_user: Annotated[User, Depends(get_current_active_user)]):

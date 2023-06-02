@@ -72,6 +72,7 @@ VALUES
 ('external_client', 'forecast'),
 ('admax', 'forecast'),
 ('admax', 'get_data'),
+('admax', 'add_user'),
 ('admax', 'training'),
 ('backend', 'training'),
 ('backend', 'get_data');

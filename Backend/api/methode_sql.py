@@ -55,20 +55,18 @@ def fetch_permissions(id_user):
     return list_permission
 
 
-# def fetch_permissions():
-#     ctx = get_db_connection()
-#     cs = ctx.cursor(DictCursor)
-#     try:
-#         request = "SELECT up.user_id, up.permission_id, p.description FROM user_permission up JOIN permissions p ON up.permission_id = p.permission_id "
-#         print(request)
-#         cs.execute(request)
-#         list = cs.fetchall()
-#         # dict_permission = {permission['PERMISSION_ID'] : permission['DESCRIPTION'] for permission in list} Si besoin d'un dictionnaire
-#         list_permission = [permission['PERMISSION_ID'] for permission in list]
-#     finally:
-#         cs.close()
+def add_user_db(user_add):
+    ctx = get_db_connection()
+    cs = ctx.cursor(DictCursor)
+    try:
+        request_user_add =  f"INSERT INTO users (user_id, pwd_hash, create_date, last_upd_date, active) VALUES ('{user_add.user_id}', '{user_add.pwd_hash}', '{user_add.create_date}', '{user_add.last_upd_date}', '{user_add.active}')"
+        cs.execute(request_user_add)
+        print('User added')
+        for permission in user_add.permission:
+            request_user_permission_add = f"INSERT INTO user_permission (user_id, permission_id) VALUES ('{user_add.user_id}', '{permission}')"
+            cs.execute(request_user_permission_add)
+        print('User_permissions added')
+    finally:
+        cs.close()
 
-#     return list_permission
-
-# test_2 = fetch_permissions()
-# print(test_2)
+    return "User and User_permissions added"
