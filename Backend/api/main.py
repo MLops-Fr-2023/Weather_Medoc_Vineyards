@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 import numpy as np
 import pandas as pd
+from datetime import datetime
 from pydantic import BaseModel
 import random
 import json
@@ -40,7 +41,7 @@ columns_mandatory = ['observation_time','temperature','weather_code','wind_speed
                      'wind_degree','wind_dir','pressure','precip','humidity',
                      'cloudcover','feelslike','uv_index','visibility','time','city']
 
-list_permissions = ['forecast, get_data, training, add_user']
+list_permissions = ['forecast', 'get_data', 'training', 'user_management']
 
 ############## Class ##############
 
@@ -51,14 +52,14 @@ class User(BaseModel):
     lastname: Optional[str] = None
     user_email: Optional[str] = None
     position: Optional[str] = None
-    create_date: Optional[date] = None
-    last_upd_date: Optional[date] = None
+    create_date: Optional[date] =  datetime.now().strftime("%Y-%m-%d")
+    last_upd_date: Optional[date] = datetime.now().strftime("%Y-%m-%d")
     active: Optional[bool] = None
-    permissions: Optional[List[str]] = []
+    permissions: Optional[list[str]] = None
 
 class UserPermission(BaseModel):
     user_id: str
-    permission_id: str
+    permissions_id: list[str] = None
 
 class UserInDB(User):
     pwd_hash: str
@@ -150,11 +151,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     except JWTError:
         raise credentials_exception
     users_db = fetch_users_from_db()
-    #permissions = fetch_permissions(user_id)
     user = get_user(users_db, user_id=token_data.user_id)
-    print('user current : ')
-    print(user)
-    print("")
     
     if user is None:
         raise credentials_exception
@@ -247,28 +244,116 @@ async def read_users_me(
     return current_user
 
 
-@app.post("/add_user",  name='Modify the caracteristic of a user', tags=['Administrators'])
-async def get_data(user_add : User, current_user: Annotated[User, Depends(get_current_active_user)]):
+@app.post("/add_user",  name='Add a user to the dB', tags=['Administrators'])
+async def get_data(user_add : Annotated[User, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
 
     """Add a user to the dB.
     INPUTS :
          user to add : Dictionnary
     OUTPUTS : User added in Snowflake - Users dB and User_permission dB
     """
-    print('')
-    print('ceci est un test')
-    print('')
-    # todo : implement permission checking
-    if not 'add_user' in current_user.permissions:
-        raise Exception(" You don't have the permission")
-    print('Identification OK')
+
+    if not 'user_management' in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     for permission in user_add.permissions:
         if permission not in list_permissions:
-            raise Exception("Unvalid permission")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid permission associated to user")
     user_add.pwd_hash = pwd_context.hash(user_add.pwd_hash)
-    await add_user_db()
+    add_user_db(user_add)
 
     return {'Message' : 'User successfully added'}
+
+
+@app.post("/add_user_permission",  name='Associate permissions to a user', tags=['Administrators'])
+async def get_data(user_permissions_add : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
+
+    """Associate some permissions to a existing user.
+    INPUTS :
+         user_id
+         permission_id
+    OUTPUTS : User_permissions added in Snowflake -  User_permission dB
+    """
+    if not 'user_management' in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+    
+    for permission in user_permissions_add.permissions_id :
+        if permission not in list_permissions:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid permission associated to user")
+    list_user_id = fetch_user_id()
+    if not user_permissions_add.user_id in list_user_id :
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User_id not in User dB")
+    add_user_permissions_db(user_permissions_add)
+
+    return {'Message' : 'User_permissions successfully added'}
+
+
+@app.post("/modify_user",  name='Delete a user from the dB', tags=['Administrators'])
+async def get_data(user : Annotated[User, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
+
+    """Modify a user from the dB.
+    INPUTS :
+         user to modify : Dictionnary
+    OUTPUTS : User modified in Snowflake - Users dB and User_permission dB
+    """
+
+    if not 'user_management' in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+    list_user_id = fetch_user_id()
+    if user.user_id not in list_user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User_id not in User dB")
+    if user.user_id == 'admax':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be updated")
+    user.pwd_hash = pwd_context.hash(user.pwd_hash) if user.pwd_hash is not None else ""
+    
+    userpermission_desired = UserPermission(user_id=user.user_id, permissions_id=user.permissions)
+    userpermission_previous = UserPermission(user_id=user.user_id, permissions_id= fetch_user_permission_permission_id(user.user_id))
+
+    user_items = user.__dict__    
+    modify_user(user_items, userpermission_previous, userpermission_desired)
+
+    return {'Message' : 'User successfully modified'}
+
+
+@app.post("/delete_user",  name='Delete a user from the dB', tags=['Administrators'])
+async def get_data(user : Annotated[User, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
+
+    """Delete a user from the dB.
+    INPUTS :
+         user to add : Dictionnary
+    OUTPUTS : User added in Snowflake - Users dB 
+    """
+
+    if not 'user_management' in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+    list_user_id = fetch_user_id()
+    if user.user_id not in list_user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User_id not in User dB")
+    if user.user_id == 'admax':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be deleted")
+    delete_user(user.user_id)
+
+    return {'Message' : 'User successfully deleted'}
+
+@app.post("/delete_user_permissions",  name='Delete some user_permissions from the dB', tags=['Administrators'])
+async def get_data(user_permissions : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
+
+    """Delete a user from the dB.
+    INPUTS :
+         user to add : Dictionnary
+    OUTPUTS : User added in Snowflake - Users dB 
+    """
+
+    if not 'user_management' in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+    list_user_id = fetch_user_permission_user_id()
+    if user_permissions.user_id not in list_user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User_id not in User_permission dB")
+    if user_permissions.user_id == 'admax':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be deleted")
+    
+    summary = delete_user_permission(user_permissions) 
+    
+    return summary
 
 
 @app.post("/get_data",  name='Force weather data update', tags=['Backend'])
@@ -279,14 +364,10 @@ async def get_data(current_user: Annotated[User, Depends(get_current_active_user
         current user : str 
     OUTPUTS : Data updated in Snowflake
     """
-    # todo : implement permission checking
     if not 'get_data' in current_user.permissions:
-        raise Exception(" You don't have the permission"
-        )
-    print('Identification OK')
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
     data_list = await fetch_data()
-    print(data_list)
 
     return {'Message' : 'Data successfully updated'}
 
