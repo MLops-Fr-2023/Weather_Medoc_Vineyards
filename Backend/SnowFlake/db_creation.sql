@@ -54,38 +54,29 @@ CREATE TABLE weather_data (
 
 INSERT INTO users (user_id, pwd_hash, create_date, last_upd_date, active)
 VALUES
-('airflow_train', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', current_date, current_date, 'True'),
+('external_client', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', current_date, current_date, 'True'),
 ('admax', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', current_date, current_date, 'True'),
-('nico', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', current_date, current_date, 'True'),
-('jacques', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', current_date, current_date, 'True'),
-('joffrey', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', current_date, current_date, 'True');
+('backend', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', current_date, current_date, 'True');
 
 
 INSERT INTO permissions (permission_id, description)
 VALUES 
-('get_pred', 'get wheater prediction'),
 ('training', 'launch model training'),
 ('usr_create', 'user creation'),
 ('usr_edit', 'user edition'),
-('usr_deactivate', 'user deactivation'),
-('forecast', 'get 7 days forecast'),
 ('get_data', 'get data from weather api'),
 ('forecast', 'get 7 days forecast');
 
 INSERT INTO user_permission (user_id, permission_id)
 VALUES
-('airflow_train', 'forecast'),
-('airflow_train', 'get_data'),
-('airflow_train', 'training'),
+('external_client', 'forecast'),
 ('admax', 'forecast'),
 ('admax', 'get_data'),
+('admax', 'add_user'),
 ('admax', 'training'),
-('nico', 'forecast'),
-('nico', 'get_data'),
-('nico', 'training'),
-('jacques', 'forecast'),
-('jacques', 'get_data'),
-('jacques', 'training'),
-('joffrey', 'forecast'),
-('joffrey', 'get_data'),
-('joffrey', 'training');
+('backend', 'training'),
+('backend', 'get_data');
+
+ALTER WAREHOUSE COMPUTE_WH SUSPEND,
+ALTER WAREHOUSE LOAD SUSPEND,
+ALTER WAREHOUSE QUERY SUSPEND;
