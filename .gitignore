@@ -3,3 +3,4 @@
 /Backend/models/
 /Backend/full.json
 /Backend/lite.json
+*.pyc
