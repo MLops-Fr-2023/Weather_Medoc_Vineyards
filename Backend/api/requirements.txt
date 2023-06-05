@@ -8,3 +8,4 @@ python-dotenv
 snowflake-connector-python
 bcrypt
 python-multipart
+jose

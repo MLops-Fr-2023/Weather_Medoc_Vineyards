@@ -1,80 +1,28 @@
 import uvicorn
-from datetime import datetime, timedelta, time, date
-from typing import Annotated, Optional, Union, List
-from fastapi.security import OAuth2PasswordBearer, HTTPBasic, HTTPBasicCredentials, OAuth2PasswordRequestForm
 from fastapi import FastAPI, Form, File, Response, Header, UploadFile, Depends, HTTPException, status, Query
-from passlib.context import CryptContext
 from jose import JWTError, jwt
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from pydantic import BaseModel
+from datetime import datetime, timedelta, time, date
 import random
 import json
 import os
-from dotenv import dotenv_values
 import pandas as pd
 import requests
 from snowflake.connector import connect, DictCursor
-from methode_sql import *
+from db_access.DbCnx import UserDao
+from security import authent, Permissions
+# from security.Permissions import PermissionsRefs
+from typing import Annotated, Optional, Union, List
+from config import conf
+from business import References
+from business.User import User
+from business.UserPermission import UserPermission
+from business.UserIdPermId import UserIdPermissionId
+from business.Token import Token
+from business.City import City
 
-
-config = {**dotenv_values(".env_API")}
-
-########## Param Security ##########
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-SECRET_KEY = config['SECRET_KEY']
-ALGORITHM = config['ALGORITHM']
-ACCESS_TOKEN_EXPIRE_MINUTES = config['ACCESS_TOKEN_EXPIRE_MINUTES']
-WEATHER_API_KEY = config['WEATHER_API_KEY']
-
-
-############### dB ###############
-
-
-cities = ['Margaux', 'Soussan', 'Macau, FR', 'Castelnau-de-Medoc','Lamarque, FR', 'Ludon-Medoc', 'Arsac', 'Brach, FR', 'Saint-Laurent Medoc' ]
-
-columns_mandatory = ['observation_time','temperature','weather_code','wind_speed',
-                     'wind_degree','wind_dir','pressure','precip','humidity',
-                     'cloudcover','feelslike','uv_index','visibility','time','city']
-
-list_permissions = ['forecast', 'get_data', 'training', 'user_management']
-
-############## Class ##############
-
-class User(BaseModel):
-    user_id: str
-    pwd_hash: Optional[str] = None
-    firstname: Optional[str] = None
-    lastname: Optional[str] = None
-    user_email: Optional[str] = None
-    position: Optional[str] = None
-    create_date: Optional[date] =  datetime.now().strftime("%Y-%m-%d")
-    last_upd_date: Optional[date] = datetime.now().strftime("%Y-%m-%d")
-    active: Optional[bool] = None
-    permissions: Optional[list[str]] = None
-
-class UserPermission(BaseModel):
-    user_id: str
-    permissions_id: list[str] = None
-
-class UserInDB(User):
-    pwd_hash: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    user_id: Union[str, None] = None
-
-class City(BaseModel):
-    name_city: Union[str, None] = None
-
-############## API ##############
 
 app = FastAPI(
     title='Weather API - Château Margaux',
@@ -102,76 +50,13 @@ description="API for the weather forecasting around Château Margaux",
     }])
 
 
-
-######### Security Functions ########
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_user(db, user_id: str):        
-    if user_id in db: 
-        user_dict = db[user_id]
-        user_dict = {key.lower(): value for key, value in user_dict.items()}
-        user_dict['permissions'] = fetch_permissions(user_id)
-        return UserInDB(**user_dict)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-def authenticate_user(users_db, user_id: str, password: str):
-    user = get_user(users_db, user_id)
-    if not user:
-        return False
-    if not verify_password(password, user.pwd_hash):
-        return False
-    return user
-
-def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, config['SECRET_KEY'], algorithm=config['ALGORITHM'])
-    return encoded_jwt
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, config['SECRET_KEY'], algorithms=config['ALGORITHM'])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-        token_data = TokenData(user_id=user_id)
-    except JWTError:
-        raise credentials_exception
-    users_db = fetch_users_from_db()
-    user = get_user(users_db, user_id=token_data.user_id)
-    
-    if user is None:
-        raise credentials_exception
-    return user
-
-async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)]):
-    if not current_user.active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
-
-######### Roads Functions #########
-
-async def fetch_data(columns = columns_mandatory, type_request = 'current', API_KEY = WEATHER_API_KEY):
+async def fetch_data(columns = References.columns_mandatory, type_request = 'current', API_KEY = conf.WEATHER_API_KEY):
     
     # collect current data and create DataFrame
     df_current = pd.DataFrame(columns = columns)
 
     # collect current data and create DataFrame
-    for city in cities:
+    for city in References.cities:
         df_tmp = {}
         params = {
             'access_key': API_KEY,
@@ -220,171 +105,129 @@ def read_root():
     return "Welcome to the Joffrey LEMERY, Nicolas CARAYON and Jacques DROUVROY weather API (for places around Margaux-Cantenac)"
 
 @app.post("/token", response_model=Token, tags=['Clients'])
-async def login(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
-):
-    users_db = fetch_users_from_db()
-    user = authenticate_user(users_db, form_data.username, form_data.password)
+async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends()]):
+    
+    user = authent.authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
-    access_token = create_access_token(
+    access_token_expires = timedelta(minutes=int(conf.ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token = authent.create_access_token(
         data={"sub": user.user_id}, expires_delta=access_token_expires
     )
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/users/me/", response_model=User, tags=['Clients'])
-async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_user)]
-):
+async def read_users_me(current_user: Annotated[User, Depends(authent.get_current_user)]):
     return current_user
 
-
-@app.post("/add_user",  name='Add a user to the dB', tags=['Administrators'])
-async def get_data(user_add : Annotated[User, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
-
-    """Add a user to the dB.
+@app.post("/add_user",  name='Add user', tags=['Administrators'])
+async def add_user(user_add : Annotated[User, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+ 
+    """Add user to table USERS
     INPUTS :
          user to add : Dictionnary
     OUTPUTS : User added in Snowflake - Users dB and User_permission dB
     """
-
-    if not 'user_management' in current_user.permissions:
+    if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-    for permission in user_add.permissions:
-        if permission not in list_permissions:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid permission associated to user")
-    user_add.pwd_hash = pwd_context.hash(user_add.pwd_hash)
-    add_user_db(user_add)
+        
+    user_add.pwd_hash = authent.pwd_context.hash(user_add.pwd_hash)
+    UserDao.add_user(user_add)
 
-    return {'Message' : 'User successfully added'}
-
+    return {'Message' : f"User {user_add.user_id} successfully added"}
 
 @app.post("/add_user_permission",  name='Associate permissions to a user', tags=['Administrators'])
-async def get_data(user_permissions_add : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
+async def add_user_permission(user_permissions_add : Annotated[UserIdPermissionId, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Associate some permissions to a existing user.
+    """Associates some permissions to a existing user.
     INPUTS :
          user_id
          permission_id
     OUTPUTS : User_permissions added in Snowflake -  User_permission dB
     """
-    if not 'user_management' in current_user.permissions:
+    if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    for permission in user_permissions_add.permissions_id :
-        if permission not in list_permissions:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid permission associated to user")
-    list_user_id = fetch_user_id()
-    if not user_permissions_add.user_id in list_user_id :
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User_id not in User dB")
-    add_user_permissions_db(user_permissions_add)
+    UserDao.add_user_permission(user_permissions_add.user_id, user_permissions_add.permission_id)
 
     return {'Message' : 'User_permissions successfully added'}
 
+@app.post("/edit_user",  name='User edition', tags=['Administrators'])
+async def edit_user(user : Annotated[User, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-@app.post("/modify_user",  name='Delete a user from the dB', tags=['Administrators'])
-async def get_data(user : Annotated[User, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
-
-    """Modify a user from the dB.
+    """Edit a user in table USERS
     INPUTS :
          user to modify : Dictionnary
     OUTPUTS : User modified in Snowflake - Users dB and User_permission dB
     """
 
-    if not 'user_management' in current_user.permissions:
+    if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-    list_user_id = fetch_user_id()
-    if user.user_id not in list_user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User_id not in User dB")
-    if user.user_id == 'admax':
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be updated")
-    user.pwd_hash = pwd_context.hash(user.pwd_hash) if user.pwd_hash is not None else ""
     
-    userpermission_desired = UserPermission(user_id=user.user_id, permissions_id=user.permissions)
-    userpermission_previous = UserPermission(user_id=user.user_id, permissions_id= fetch_user_permission_permission_id(user.user_id))
-
-    user_items = user.__dict__    
-    modify_user(user_items, userpermission_previous, userpermission_desired)
-
-    return {'Message' : 'User successfully modified'}
-
+    try:
+        UserDao.edit_user(user)
+        print(f"User {user.user_id} correctly updated")
+        return {'Message' : 'User successfully modified'}
+    except:
+        print(f"Failed tp update user {user.user_id}")
+        return {'Message' : f"Failed to update {user.user_id}"}
+    finally:
+        return
 
 @app.post("/delete_user",  name='Delete a user from the dB', tags=['Administrators'])
-async def get_data(user : Annotated[User, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
+async def delete_user(user_id : str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Delete a user from the dB.
+    """Delete user from table USERS
     INPUTS :
          user to add : Dictionnary
     OUTPUTS : User added in Snowflake - Users dB 
     """
 
-    if not 'user_management' in current_user.permissions:
+    if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-    list_user_id = fetch_user_id()
-    if user.user_id not in list_user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User_id not in User dB")
-    if user.user_id == 'admax':
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be deleted")
-    delete_user(user.user_id)
-
-    return {'Message' : 'User successfully deleted'}
-
-@app.post("/delete_user_permissions",  name='Delete some user_permissions from the dB', tags=['Administrators'])
-async def get_data(user_permissions : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(get_current_active_user)]):
-
-    """Delete a user from the dB.
-    INPUTS :
-         user to add : Dictionnary
-    OUTPUTS : User added in Snowflake - Users dB 
-    """
-
-    if not 'user_management' in current_user.permissions:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-    list_user_id = fetch_user_permission_user_id()
-    if user_permissions.user_id not in list_user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User_id not in User_permission dB")
-    if user_permissions.user_id == 'admax':
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be deleted")
     
-    summary = delete_user_permission(user_permissions) 
-    
-    return summary
+    if user_id == 'admax':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be deleted")
+    try:
+        UserDao.delete_user(user_id)
+        UserDao.delete_user_permissions(user_id)
+    except:
+        return {'Message' : f"User {user_id} deletion failed"}
+    finally:
+        return {'Message' : f"User {user_id} and related permissions successfully deleted"}
 
-
-@app.post("/get_data",  name='Force weather data update', tags=['Backend'])
-async def get_data(current_user: Annotated[User, Depends(get_current_active_user)]):
+@app.post("/get_data",  name='Update database with data from Wheather API', tags=['Backend'])
+async def get_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Update the current weather data for all cities.
     INPUTS :
         current user : str 
     OUTPUTS : Data updated in Snowflake
     """
-    if not 'get_data' in current_user.permissions:
+    if not Permissions.Permissions.get_data in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
     data_list = await fetch_data()
 
     return {'Message' : 'Data successfully updated'}
 
+@app.post("/train_model/{city}",  name='Force the train of the model', tags=['Administrators'])
+async def train_model(city_data: City, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-@app.post("/force_train_model/{city}",  name='Force the train of the model', tags=['Administrators'])
-async def force_train_model(city_data: City, current_user: Annotated[User, Depends(get_current_active_user)]):
-
-    """Update the model by training the model - Can take some times (training time).
+    """Update the model by training it - Can take some times (training time).
     INPUTS :
         current user : str 
     OUTPUTS : Data updated in Snowflake
     """
     return {'Message' : 'Not released'}
 
-
 @app.post("/forecast_city/{city}",  name='Forecast 7-days', tags=['Backend'])
-async def forecast(city_data: City, current_user: Annotated[User, Depends(get_current_active_user)]):
+async def forecast(city_data: City, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Returns the forecast of weather feature for city = {city}.
     INPUTS :
