@@ -1,25 +1,14 @@
 import uvicorn
-from fastapi import FastAPI, Form, File, Response, Header, UploadFile, Depends, HTTPException, status, Query
-from jose import JWTError, jwt
-import numpy as np
-import pandas as pd
-from datetime import datetime
-from datetime import datetime, timedelta, time, date
-import random
-import json
-import os
-import pandas as pd
-import requests
-from snowflake.connector import connect, DictCursor
+from fastapi import FastAPI, Depends, HTTPException, status
+from datetime import timedelta
 from db_access.DbCnx import UserDao
 from security import authent, Permissions
 # from security.Permissions import PermissionsRefs
-from typing import Annotated, Optional, Union, List
+from typing import Annotated
 from config import conf
 from business import References
-from business.User import User, UserInDB, UserAdd
+from business.User import User, UserAdd
 from business.UserPermission import UserPermission
-from business.UserIdPermId import UserIdPermissionId
 from business.Token import Token
 from business.City import City
 from business.Dataprocessing import fetch_data
@@ -52,6 +41,7 @@ description="API for the weather forecasting around Château Margaux",
 
 
 ############## Roads ##############
+
 @app.get("/")
 def read_root():
     """"
@@ -89,15 +79,13 @@ async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annot
     """Add user to table USERS
     INPUTS :
          user to add : Dictionnary
-    OUTPUTS : User added in Snowflake - Users dB and User_permission dB
+    OUTPUTS : User added in Snowflake - Users dB
     """
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    list_user_id = UserDao.get_userID_in_Users()
-    if user_add.user_id in list_user_id :
+    if not UserDao.is_userID_in_Users(user_add.user_id) :
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User_id already exists")
-
     
     user_add.pwd_hash = authent.pwd_context.hash(user_add.pwd_hash)
     UserDao.add_user(user_add)
@@ -106,7 +94,7 @@ async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annot
 
 
 @app.post("/add_user_permission",  name='Associate permissions to a user', tags=['Administrators'])
-async def add_user_permission(user_permissions_add : Annotated[UserIdPermissionId, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+async def add_user_permission(user_permissions_add : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Associates some permissions to a existing user.
     INPUTS :
@@ -117,12 +105,10 @@ async def add_user_permission(user_permissions_add : Annotated[UserIdPermissionI
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    list_user_id = UserDao.get_userID_in_Users()
-    if user_permissions_add.user_id not in list_user_id :
+    if not UserDao.is_userID_in_Users(user_permissions_add.user_id) :
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User doesn't exist in User dB")
 
-    list_user_permissions = UserDao.get_user_permissions(user_permissions_add.user_id)
-    if user_permissions_add.permission_id in list_user_permissions :
+    if UserDao.is_in_user_permission_id(user_permissions_add.user_id, user_permissions_add.permission_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permissions already exists")
     
     if user_permissions_add.permission_id not in References.list_permissions :
@@ -145,11 +131,10 @@ async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotate
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    if user.user_id == 'admax':
+    if user.user_id == Permissions.SpecialUsersID.administrator.value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be updated")
-
-    list_user_id = UserDao.get_userID_in_Users()
-    if user.user_id not in list_user_id:
+    
+    if not UserDao.is_userID_in_Users(user.user_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist")
 
     try:
@@ -172,7 +157,7 @@ async def delete_user(user_id : str, current_user: Annotated[User, Depends(authe
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    if user_id == 'admax':
+    if user_id == Permissions.SpecialUsersID.administrator.value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be deleted")
 
     try:
@@ -184,7 +169,7 @@ async def delete_user(user_id : str, current_user: Annotated[User, Depends(authe
 
 
 @app.post("/delete_user_permissions",  name='Delete some user_permissions from the dB', tags=['Administrators'])
-async def delete_user_permissions(user_permissions : Annotated[UserIdPermissionId, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+async def delete_user_permissions(user_permissions : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Delete a user from the dB.
     INPUTS :
@@ -194,8 +179,8 @@ async def delete_user_permissions(user_permissions : Annotated[UserIdPermissionI
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    list_permission_id = UserDao.fetch_user_permission_permission_id(user_permissions.user_id)
-    if user_permissions.permission_id not in list_permission_id :
+
+    if not UserDao.is_in_user_permission_id(user_permissions.user_id, user_permissions.permission_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This permission doesn't exist")
     
     try:

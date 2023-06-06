@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Annotated, Optional, Union, List
+from typing import Optional
 from datetime import datetime, date
 
 class User(BaseModel):
@@ -25,6 +25,4 @@ class UserAdd(BaseModel):
     lastname: Optional[str] = None
     user_email: Optional[str] = None
     position: Optional[str] = None
-    #create_date: Optional[date] =  datetime.now().strftime("%Y-%m-%d")
-    #last_upd_date: Optional[date] = datetime.now().strftime("%Y-%m-%d")
     active: Optional[bool] = True

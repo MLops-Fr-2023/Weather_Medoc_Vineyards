@@ -2,9 +2,6 @@ from snowflake.connector import connect, DictCursor
 from dotenv import dotenv_values
 from business.User import UserInDB
 from datetime import datetime
-from fastapi import HTTPException, status
-from business import References
-import json
 
 config = {**dotenv_values(".env_API")}
 
@@ -50,8 +47,25 @@ class UserDao():
         return list
 
 
+    # @staticmethod
+    # def get_userID_in_Users():
+    #     ctx = DbCnx.get_db_cnx()
+    #     cs = ctx.cursor(DictCursor)
+    #     try:
+    #         request =  "SELECT * FROM USERS"
+    #         cs.execute(request)
+    #         list = cs.fetchall()
+    #         list = [user['USER_ID'] for user in list]
+
+    #     finally:
+    #         cs.close()
+    #         ctx.close()
+
+    #     return list
+    
+
     @staticmethod
-    def get_userID_in_Users():
+    def is_userID_in_Users(user_id):
         ctx = DbCnx.get_db_cnx()
         cs = ctx.cursor(DictCursor)
         try:
@@ -59,13 +73,13 @@ class UserDao():
             cs.execute(request)
             list = cs.fetchall()
             list = [user['USER_ID'] for user in list]
-
+            value = user_id in list
         finally:
             cs.close()
             ctx.close()
 
-        return list
-    
+        return value
+
 
     @staticmethod
     def get_user_permissions(user_id):
@@ -82,10 +96,10 @@ class UserDao():
             cs.close()
             ctx.close()
         return list
-    
+
 
     @staticmethod
-    def fetch_user_permission_permission_id(user_id):
+    def is_in_user_permission_id(user_id, permission_id):
         ctx = DbCnx.get_db_cnx()
         cs = ctx.cursor(DictCursor)
         try:
@@ -93,11 +107,13 @@ class UserDao():
             cs.execute(request)
             list = cs.fetchall()
             list = [permission['PERMISSION_ID'] for permission in list]
-
+            value = permission_id in list
         finally:
             cs.close()
             ctx.close()
-        return list
+        return value
+    
+
 
     @staticmethod
     def get_user(user_id: str):
@@ -114,6 +130,7 @@ class UserDao():
     def add_user(user):
         ctx = DbCnx.get_db_cnx()
         cs = ctx.cursor(DictCursor)
+
         create_date=  datetime.now().strftime("%Y-%m-%d")
         last_upd_date = datetime.now().strftime("%Y-%m-%d")
 
@@ -121,7 +138,8 @@ class UserDao():
             request =  f"INSERT INTO users (user_id, pwd_hash, firstname, lastname, user_email, position, create_date, last_upd_date, active) "
             request += f"VALUES ('{user.user_id}', '{user.pwd_hash}', '{user.firstname}', '{user.lastname}', '{user.user_email}', '{user.position}', '{create_date}', '{last_upd_date}', '{user.active}')"
 
-            cs.execute(request)            
+            cs.execute(request)
+
         finally:
             cs.close()
             ctx.close()
@@ -153,9 +171,10 @@ class UserDao():
     def edit_user(user):
         ctx = DbCnx.get_db_cnx()
         cs = ctx.cursor(DictCursor)
+
         user_items = user.__dict__
 
-        request = "UPDATE Users SET "
+        request = "UPDATE Users SET"
         for i in user_items :
             if user_items[i] != None :
                 request = request + f" {i} = '{user_items[i]}' ,"
@@ -163,7 +182,8 @@ class UserDao():
         request = request + f"WHERE user_id = '{user.user_id}';"
 
         try:
-            cs.execute(request)        
+            cs.execute(request)
+
         finally:
             cs.close()
             ctx.close()
