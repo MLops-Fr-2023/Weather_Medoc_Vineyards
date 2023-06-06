@@ -45,23 +45,6 @@ class UserDao():
             ctx.close()
 
         return list
-
-
-    # @staticmethod
-    # def get_userID_in_Users():
-    #     ctx = DbCnx.get_db_cnx()
-    #     cs = ctx.cursor(DictCursor)
-    #     try:
-    #         request =  "SELECT * FROM USERS"
-    #         cs.execute(request)
-    #         list = cs.fetchall()
-    #         list = [user['USER_ID'] for user in list]
-
-    #     finally:
-    #         cs.close()
-    #         ctx.close()
-
-    #     return list
     
 
     @staticmethod
@@ -205,7 +188,7 @@ class UserDao():
             cs.close()
             ctx.close()
 
-        return {'Message' : f"Permissions and user {user_id} successfully deleted"}
+        return {'Message' : f"User {user_id} and permissions successfully deleted"}
     
 
     @staticmethod
@@ -221,4 +204,4 @@ class UserDao():
             cs.close()
             ctx.close()
 
-        return {'Message' : "User permission deleted" }
+        return {'Message' : f"Permission {user.permission_id} for user {user.user_id} successfully deleted" }
