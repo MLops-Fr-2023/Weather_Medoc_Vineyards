@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Annotated, Optional, Union, List
+from typing import Optional
 from datetime import datetime, date
 
 class User(BaseModel):
@@ -18,3 +18,11 @@ class UserInDB(User, BaseModel):
     pwd_hash: str
 
     
+class UserAdd(BaseModel):
+    user_id: str
+    pwd_hash: Optional[str] = None
+    firstname: Optional[str] = None
+    lastname: Optional[str] = None
+    user_email: Optional[str] = None
+    position: Optional[str] = None
+    active: Optional[bool] = True

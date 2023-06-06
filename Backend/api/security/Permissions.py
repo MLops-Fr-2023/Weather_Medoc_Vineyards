@@ -8,5 +8,7 @@ class Permissions(Enum):
     usr_edit   = "usr_edit"
     user_mngt  = "user_management"
 
-def is_in_enum(permission):
-    return permission in Permissions.__members__
+class SpecialUsersID(Enum):
+    administrator = 'admax'
+
+

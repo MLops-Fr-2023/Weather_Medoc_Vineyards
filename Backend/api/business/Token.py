@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Annotated, Optional, Union, List
+from typing import Union
 
 class Token(BaseModel):
     access_token: str
