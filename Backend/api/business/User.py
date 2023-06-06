@@ -11,7 +11,7 @@ class User(BaseModel):
     position: Optional[str] = None
     create_date: Optional[date] =  datetime.now().strftime("%Y-%m-%d")
     last_upd_date: Optional[date] = datetime.now().strftime("%Y-%m-%d")
-    active: Optional[bool] = True
+    active: Optional[int] = 1
     permissions: Optional[list[str]] = []
 
 class UserInDB(User, BaseModel):
@@ -25,4 +25,4 @@ class UserAdd(BaseModel):
     lastname: Optional[str] = None
     user_email: Optional[str] = None
     position: Optional[str] = None
-    active: Optional[bool] = True
+    active: Optional[int] = 1

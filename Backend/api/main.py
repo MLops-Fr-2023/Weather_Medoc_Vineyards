@@ -3,7 +3,6 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from datetime import timedelta
 from db_access.DbCnx import UserDao
 from security import authent, Permissions
-# from security.Permissions import PermissionsRefs
 from typing import Annotated
 from config import conf
 from business import References
@@ -84,8 +83,8 @@ async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annot
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    if not UserDao.is_userID_in_Users(user_add.user_id) :
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User_id already exists")
+    if UserDao.user_exists(user_add.user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="USER_ID already exists")
     
     user_add.pwd_hash = authent.pwd_context.hash(user_add.pwd_hash)
     UserDao.add_user(user_add)
@@ -96,19 +95,19 @@ async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annot
 @app.post("/add_user_permission",  name='Associate permissions to a user', tags=['Administrators'])
 async def add_user_permission(user_permissions_add : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Associates some permissions to a existing user.
+    """Give permission to user in table USER_PERMISSION
     INPUTS :
-         user_id
-         permission_id
+         user_id : user ID
+         permission_id : permission ID
     OUTPUTS : User_permissions added in Snowflake -  User_permission dB
     """
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    if not UserDao.is_userID_in_Users(user_permissions_add.user_id) :
+    if not UserDao.user_exists(user_permissions_add.user_id) :
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User doesn't exist in User dB")
 
-    if UserDao.is_in_user_permission_id(user_permissions_add.user_id, user_permissions_add.permission_id) :
+    if UserDao.user_has_permission(user_permissions_add.user_id, user_permissions_add.permission_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permissions already exists")
     
     if user_permissions_add.permission_id not in References.list_permissions :
@@ -134,7 +133,7 @@ async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotate
     if user.user_id == Permissions.SpecialUsersID.administrator.value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be updated")
     
-    if not UserDao.is_userID_in_Users(user.user_id) :
+    if not UserDao.user_exists(user.user_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist")
 
     try:
@@ -168,10 +167,10 @@ async def delete_user(user_id : str, current_user: Annotated[User, Depends(authe
         return {'Message' : f"User '{user_id}' and related permissions successfully deleted"}
 
 
-@app.post("/delete_user_permissions",  name='Delete some user_permissions from the dB', tags=['Administrators'])
-async def delete_user_permissions(user_permissions : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+@app.post("/delete_user_permission",  name='Remove permission to user', tags=['Administrators'])
+async def delete_user_permission(user_permissions : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Delete a user from the dB.
+    """Delete a user from table USERS and his permissions from table USER_PERMISSION
     INPUTS :
          user to add : Dictionnary
     OUTPUTS : User added in Snowflake - Users dB 
@@ -180,7 +179,7 @@ async def delete_user_permissions(user_permissions : Annotated[UserPermission, D
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
 
-    if not UserDao.is_in_user_permission_id(user_permissions.user_id, user_permissions.permission_id) :
+    if not UserDao.user_has_permission(user_permissions.user_id, user_permissions.permission_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This permission doesn't exist")
     
     try:
@@ -194,7 +193,7 @@ async def delete_user_permissions(user_permissions : Annotated[UserPermission, D
 @app.post("/get_data",  name='Update database with data from Wheather API', tags=['Backend'])
 async def get_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Update the current weather data for all cities.
+    """Update table WEATHER_DATA with current data from Wheather API for all cities
     INPUTS :
         current user : str 
     OUTPUTS : Data updated in Snowflake
@@ -206,15 +205,17 @@ async def get_data(current_user: Annotated[User, Depends(authent.get_current_act
 
     return {'Message' : 'Data successfully updated'}
 
+
 @app.post("/train_model/{city}",  name='Force the train of the model', tags=['Backend'])
 async def train_model(city_data: City, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Update the model by training it - Can take some times (training time).
+    """Update the model by training it - Can take some times (training time)
     INPUTS :
         current user : str 
     OUTPUTS : Data updated in Snowflake
     """
     return {'Message' : 'Not released'}
+
 
 @app.post("/forecast_city/{city}",  name='Forecast 7-days', tags=['Backend'])
 async def forecast(city_data: City, current_user: Annotated[User, Depends(authent.get_current_active_user)]):

@@ -9,3 +9,4 @@ snowflake-connector-python
 bcrypt
 python-multipart
 jose
+mysql-connector-python
