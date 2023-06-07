@@ -1,0 +1,403 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS CloudFormation infrastructure Template
+
+Parameters:
+  VPCCMCidrBlock:
+    Type: String
+    Default: 155.155.0.0/16
+    Description: Enter the main VPC_Chateau_Margot CIDR block.
+  AmiIdentifier:
+    Type: String
+    Default: ami-05b5a865c3579bbc4
+    Description: The AMI identifier to deploy.
+  #PublicSubnets:
+    # Type: CommaDelimitedList
+    # Description: The list of subnets where we would like to deploy the instances.
+    # Default: PublicSubnetCMA, PublicSubnetCMB
+
+#VPC
+Resources:
+  VPCCM:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      EnableDnsSupport: true
+      CidrBlock: !Ref VPCCMCidrBlock
+      Tags:
+        - Key: Name
+          Value: 'MainVPC_CM'
+
+#SUBNETS
+  PublicSubnetCMA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-3a
+      CidrBlock: !Select [100, !Cidr [!GetAtt VPCCM.CidrBlock, 101, 8]]
+      Tags:
+        - Key: Name
+          Value: 'MainVPC_CM-public'
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPCCM
+
+  PublicSubnetCMB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-3b
+      CidrBlock: !Select [101, !Cidr [!GetAtt VPCCM.CidrBlock, 102, 8]]
+      Tags:
+        - Key: Name
+          Value: 'MainVPC_CM-public'
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPCCM
+
+  PrivateSubnetCMA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-3a
+      CidrBlock: !Select [0, !Cidr [!GetAtt VPCCM.CidrBlock, 1, 8]]
+      Tags:
+        - Key: Name
+          Value: 'MainVPC_CM-private'
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPCCM
+
+  PrivateSubnetCMB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: eu-west-3b
+      CidrBlock: !Select [1, !Cidr [!GetAtt VPCCM.CidrBlock, 2, 8]]
+      Tags:
+        - Key: Name
+          Value: 'MainVPC_CM-private'
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPCCM
+
+#INTERNET GATEWAY
+  InternetGatewayCM:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: 'MainVPC_CM-InternetGateway'
+
+  AttachInternetGatewayCM:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPCCM
+      InternetGatewayId: !Ref InternetGatewayCM
+
+
+#ELASTIC IPs
+  NatEipCMA:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NatEipCMB:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+
+#NAT
+  NatGatewayCMA:
+    DependsOn: AttachInternetGatewayCM
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEipCMA.AllocationId
+      SubnetId: !Ref PublicSubnetCMA
+      Tags:
+        - Key: Name
+          Value: 'MainVPC-nat_CMA'
+
+  NatGatewayCMB:
+    DependsOn: AttachInternetGatewayCM
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEipCMB.AllocationId
+      SubnetId: !Ref PublicSubnetCMB
+      Tags:
+        - Key: Name
+          Value: 'MainVPC-nat_CMB'
+
+
+#TABLES PUBLIC
+  PublicRouteTableCMA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCCM
+      Tags:
+        - Key: Name
+          Value: 'MainVPC_CM-route-publicA'
+
+  AttachPublicRouteTableCMA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTableCMA
+      SubnetId: !Ref PublicSubnetCMA
+
+  PublicRouteTableCMB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCCM
+      Tags:
+        - Key: Name
+          Value: 'MainVPC_CM-route-publicB'
+
+  AttachPublicRouteTableCMB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTableCMB
+      SubnetId: !Ref PublicSubnetCMB
+
+#TABLES PRIVATE
+  PrivateRouteTableCMA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCCM
+      Tags:
+        - Key: Name
+          Value: MainVPC_CM-route-privateA
+
+  AttachPrivateRouteTableCMA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableCMA
+      SubnetId: !Ref PrivateSubnetCMA
+
+  PrivateRouteTableCMB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCCM
+      Tags:
+        - Key: Name
+          Value: MainVPC_CM-route-privateB
+
+  AttachPrivateRouteTableCMB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableCMB
+      SubnetId: !Ref PrivateSubnetCMB
+
+#ROADS
+  PublicRouteCMA:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGatewayCM
+      RouteTableId: !Ref PublicRouteTableCMA
+
+  PublicRouteCMB:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGatewayCM
+      RouteTableId: !Ref PublicRouteTableCMB
+
+  PrivateRouteCMA:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayCMA
+      RouteTableId: !Ref PrivateRouteTableCMA
+
+  PrivateRouteCMB:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayCMB
+      RouteTableId: !Ref PrivateRouteTableCMB
+
+#Security group and NACL
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public Security Group
+      VpcId: !Ref VPCCM
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: Public_security_group
+
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: LoadBalancer Security Group
+      VpcId: !Ref VPCCM
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: LoadBalancer_security_group
+
+
+  PrivateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Private Security Group
+      VpcId: !Ref VPCCM
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: Private_security_group
+
+#NACL
+  MyNetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VPCCM
+
+  MyNetworkAclEntry1:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref MyNetworkAcl
+      RuleNumber: 100
+      Protocol: 6
+      PortRange:
+        From: 22
+        To: 22
+      Egress: false
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+  MyNetworkAclEntry2:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId: !Ref MyNetworkAcl
+      RuleNumber: 200
+      Protocol: 6
+      PortRange:
+        From: 80
+        To: 80
+      Egress: false
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+#ASSOCIATION SUBNETS-NACLSs
+  MySubnetAssociationPublicA:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref  PublicSubnetCMA
+      NetworkAclId: !Ref MyNetworkAcl
+
+  MySubnetAssociationPublicB:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref  PublicSubnetCMB
+      NetworkAclId: !Ref MyNetworkAcl
+
+
+  MySubnetAssociationPrivateA:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref  PrivateSubnetCMA
+      NetworkAclId: !Ref MyNetworkAcl
+
+  MySubnetAssociationPrivateB:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !Ref  PrivateSubnetCMB
+      NetworkAclId: !Ref MyNetworkAcl
+
+#Launch Configuration
+  PublicLaunchConfig: 
+      Type: AWS::AutoScaling::LaunchConfiguration
+      Properties:
+        AssociatePublicIpAddress:  True
+        ImageId: ami-05b5a865c3579bbc4
+        InstanceType: t2.medium
+        SecurityGroups:
+          - !Ref PublicSecurityGroup
+        KeyName: JLE_pytorch_paris
+        # UserData:
+        #   Fn::Base64: !Sub |
+        #     #!/bin/bash
+        #     sudo systemctl start httpd
+
+
+#Scaling Group
+  PubicScalingGroup:
+      DependsOn: PublicTargetGroup
+      Type: AWS::AutoScaling::AutoScalingGroup
+      Properties:
+        LaunchConfigurationName: !Ref PublicLaunchConfig
+        AvailabilityZones:
+          - Fn::Select: [0, Fn::GetAZs: !Ref AWS::Region]
+          - Fn::Select: [1, Fn::GetAZs: !Ref AWS::Region]
+        VPCZoneIdentifier:
+          - !Ref PublicSubnetCMA
+          - !Ref PublicSubnetCMB
+        DesiredCapacity: 2
+        MaxSize: 4
+        MinSize: 2
+        TargetGroupARNs: 
+        - !Ref PublicTargetGroup
+
+
+  PublicTargetGroup: 
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties: 
+        Port: 80
+        Protocol: HTTP
+        VpcId: !Ref VPCCM
+
+
+  # MyResource:
+  #   Type: SomeResourceType
+  #   Properties:
+  #     PublicSubnetCMAId: !Ref PublicSubnetCMA
+  #     PublicSubnetCMBId: !Ref PublicSubnetCMB
+  #     PrivateSubnetCMAId: !Ref PrivateSubnetCMA
+  #     PrivateSubnetCMBId: !Ref PrivateSubnetCMB
+
+
+  PublicLoadBalancer: 
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Properties:
+        Type: application
+        Scheme: internet-facing
+        SecurityGroups:
+          - !Ref LoadBalancerSecurityGroup
+        Subnets:
+          - !Ref PublicSubnetCMA
+          - !Ref PublicSubnetCMB
+
+  PublicLoadBlancerListener:
+      Type: AWS::ElasticLoadBalancingV2::Listener
+      Properties: 
+        LoadBalancerArn: !Ref PublicLoadBalancer
+        Port: 80
+        Protocol: HTTP
+        DefaultActions:
+          - Type: forward
+            TargetGroupArn: !Ref PublicTargetGroup
+
