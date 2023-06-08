@@ -22,26 +22,26 @@ client = TestClient(app)
 #     assert response.json()["token_type"] == "bearer"
 
 
-# def test_read_users_me():
+def test_read_users_me():
 
-#     #Authentificated_used
-#     response = client.get("/users/me/")
-#     assert response.status_code == 401
+    #Authentificated_used
+    response = client.get("/users/me/")
+    assert response.status_code == 401
 
 
-#     #Authentificated_used
-#     expires_delta = datetime.timedelta(minutes=15)
-#     data = {"sub" : "admax"}
-#     access_token = authent.create_access_token(data=data, expires_delta=expires_delta)
-#     headers = {"Authorization": f"Bearer {access_token}"}
-#     response = client.get("/users/me/", headers=headers)
-#     assert response.status_code == 200
-#     assert "user_id" in response.json()
-#     assert response.json()['user_id'] == 'admax'
+    #Authentificated_used
+    expires_delta = datetime.timedelta(minutes=15)
+    data = {"sub" : "admax"}
+    access_token = authent.create_access_token(data=data, expires_delta=expires_delta)
+    headers = {'accept': 'application/json', "Authorization": f"Bearer {access_token}"}
+    response = client.get("/users/me/", headers=headers)
+    assert response.status_code == 200
+    assert "user_id" in response.json()
+    assert response.json()['user_id'] == 'admax'
 
 
 def test_add_user():
-    user_add = {'user_id': 'test_user', 'pwd_hash': 'test_password', 'firstname': 'test_firstname', 'lastname': 'test_lastname', 'user_email': 'test_email', 'position': 'test_position', 'active': 1}
+    user_add = {'user_id': 'test_user', 'pwd_hash': 'test_password', 'firstname': 'test_firstname', 'lastname': 'test_lastname', 'user_email': 'test_email', 'position': 'test_position', 'active': int(1)}
 
     #Authentificated_used
     response = client.post("/add_user", json = user_add)
@@ -57,5 +57,4 @@ def test_add_user():
     assert "Message" in response.json()
 
 
-# Add more tests for other API endpoints...
 
