@@ -4,8 +4,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import timedelta, datetime
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
-from business import References
-from business.User import User, UserInDB
+from business.User import User
 from business.Token import TokenData
 from db_access.DbCnx import UserDao
 from jose import jwt, JWTError
