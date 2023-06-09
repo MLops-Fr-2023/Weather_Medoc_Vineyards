@@ -49,7 +49,6 @@ class UserDao():
             cs = ctx.cursor(DictCursor)
         elif db_env == DbType.mysql.value:
             cs = ctx.cursor(cursor_class=CMySQLCursorDict)
-        print(f"\n db_env : {db_env} \n")
         return cs
 
     @staticmethod
