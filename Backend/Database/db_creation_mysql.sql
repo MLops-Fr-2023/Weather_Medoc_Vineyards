@@ -52,7 +52,8 @@ INSERT INTO USERS (USER_ID, PWD_HASH, CREATE_DATE, LAST_UPD_DATE, ACTIVE)
 VALUES
 ('external_client', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1),
 ('admax', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1),
-('backend', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1);
+('backend', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1),
+('test', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1);
 
 INSERT INTO PERMISSIONS (PERMISSION_ID, DESCRIPTION)
 VALUES 
@@ -69,4 +70,5 @@ VALUES
 ('admax', 'user_management'),
 ('admax', 'training'),
 ('backend', 'training'),
-('backend', 'get_data');
+('backend', 'get_data'),
+('test', 'forecast');

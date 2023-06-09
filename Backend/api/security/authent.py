@@ -44,16 +44,19 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    print('bimbim')
     try:
         payload = jwt.decode(token, conf.config['SECRET_KEY'], algorithms=conf.config['ALGORITHM'])
         user_id: str = payload.get("sub")
+        print('user_id : ', user_id)
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
+        print('token_data : ', token_data)
     except JWTError:
         raise credentials_exception
-
     user = UserDao.get_user(token_data.user_id)
+    print('user : ',user)
     if user is None:
         raise credentials_exception
     return user

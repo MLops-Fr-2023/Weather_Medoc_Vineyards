@@ -84,7 +84,7 @@ async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annot
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
     if UserDao.user_exists(user_add.user_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="USER_ID already exists")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="USER_ID already exists")
     
     user_add.pwd_hash = authent.pwd_context.hash(user_add.pwd_hash)
     UserDao.add_user(user_add)
@@ -103,15 +103,19 @@ async def add_user_permission(user_permissions_add : Annotated[UserPermission, D
     """
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-    
+
+    if user_permissions_add.user_id == Permissions.SpecialUsersID.administrator.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user can't be updated")
+
     if not UserDao.user_exists(user_permissions_add.user_id) :
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User doesn't exist in User dB")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist in User dB")
+
+    if user_permissions_add.permission_id not in References.list_permissions :
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permission not available")
 
     if UserDao.user_has_permission(user_permissions_add) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permissions already exists")
-    
-    if user_permissions_add.permission_id not in References.list_permissions :
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permission not available")
+
     
     UserDao.add_user_permission(user_permissions_add)
 
@@ -131,12 +135,13 @@ async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotate
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
     if user.user_id == Permissions.SpecialUsersID.administrator.value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be updated")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user can't be updated")
     
     if not UserDao.user_exists(user.user_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist")
 
     try:
+        user.pwd_hash = authent.pwd_context.hash(user.pwd_hash)
         UserDao.edit_user(user)
     except:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update '{user.user_id}'")
@@ -157,7 +162,10 @@ async def delete_user(user_id : str, current_user: Annotated[User, Depends(authe
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
     if user_id == Permissions.SpecialUsersID.administrator.value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This user can't be deleted")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user can't be deleted")
+    
+    if not UserDao.user_exists(user_id) :
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist")
 
     try:
         UserDao.delete_user(user_id)
@@ -178,6 +186,8 @@ async def delete_user_permission(user_permissions : Annotated[UserPermission, De
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
+    if user_permissions.user_id == Permissions.SpecialUsersID.administrator.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user_permission can't be deleted")
 
     if not UserDao.user_has_permission(user_permissions) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This permission doesn't exist")
