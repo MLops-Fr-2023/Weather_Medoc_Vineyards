@@ -10,3 +10,5 @@ bcrypt
 python-multipart
 jose
 mysql-connector-python
+pytest
+httpx
