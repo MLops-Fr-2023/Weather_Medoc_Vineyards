@@ -4,3 +4,5 @@
 /Backend/full.json
 /Backend/lite.json
 *.pyc
+/Backend/Train/historical_20080801_full.csv
+/Backend/Train/Margaux_v2a.pt
