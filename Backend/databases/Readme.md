@@ -11,5 +11,5 @@ list of the python librairies necessary to run init_weather_data_historical.py
 Python script that feeds the table WHEATHER_DATA with historical data from the file *historical_20080801.csv*
 You may need to upgrade python libraries before running this script with the following command line 
 `$ pip install -r requirements.txt`
-Use the following command line to lauch the script :
+Use the following command line to launch the script :
 `$ python init_weather_data_historical.py`
