@@ -86,10 +86,9 @@ async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annot
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="USER_ID already exists")
     
     user_add.pwd_hash = authent.pwd_context.hash(user_add.pwd_hash)
-    UserDao.add_user(user_add)
-
-    return {'Message' : f"User '{user_add.user_id}' successfully added"}
-
+    
+    return UserDao.add_user(user_add)
+        
 
 @app.post("/add_user_permission",  name='Associate permissions to a user', tags=['Administrators'])
 async def add_user_permission(user_permissions_add : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -107,20 +106,18 @@ async def add_user_permission(user_permissions_add : Annotated[UserPermission, D
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user can't be updated")
 
     if not UserDao.user_exists(user_permissions_add.user_id) :
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist in User dB")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"User '{user_permissions_add.user_id}' doesn't exist")
 
     if user_permissions_add.permission_id not in UserDao.get_permission_ids():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permission not available")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                            detail=f"Permission '{user_permissions_add.permission_id}' doesn't exist")
 
     if UserDao.user_has_permission(user_permissions_add) :
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permissions already exists")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                            detail=f"Permission '{user_permissions_add.permission_id}' already given to user '{user_permissions_add.user_id}'")
 
-    try:
-        UserDao.add_user_permission(user_permissions_add)
-        return {'Message' : f"Permission '{user_permissions_add.permission_id}' correctly added to user '{user_permissions_add.user_id}'"}
-    except Exception as e:
-        return {'Message' : f"Add permission '{user_permissions_add.permission_id}' to user '{user_permissions_add.user_id}' failed : {e}"}    
-
+    return UserDao.add_user_permission(user_permissions_add)           
+    
 
 @app.post("/edit_user",  name='User edition', tags=['Administrators'])
 async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -138,15 +135,10 @@ async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotate
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user can't be updated")
     
     if not UserDao.user_exists(user.user_id) :
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"User '{user.user_id}' doesn't exist")
 
-    try:
-        user.pwd_hash = authent.pwd_context.hash(user.pwd_hash)
-        UserDao.edit_user(user)
-    except:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to update '{user.user_id}'")
-    finally:
-        return {'Message' : f"User '{user.user_id}' successfully modified"}
+    user.pwd_hash = authent.pwd_context.hash(user.pwd_hash)
+    return UserDao.edit_user(user)
 
 
 @app.post("/delete_user",  name='Delete a user from the dB', tags=['Administrators'])
@@ -167,13 +159,8 @@ async def delete_user(user_id : str, current_user: Annotated[User, Depends(authe
     if not UserDao.user_exists(user_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist")
 
-    try:
-        UserDao.delete_user(user_id)
-    except:
-        return {'Message' : f"User '{user_id}' deletion failed"}
-    finally:
-        return {'Message' : f"User '{user_id}' and related permissions successfully deleted"}
-
+    return UserDao.delete_user(user_id)
+    
 
 @app.post("/delete_user_permission",  name='Remove permission to user', tags=['Administrators'])
 async def delete_user_permission(user_permissions : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -188,17 +175,12 @@ async def delete_user_permission(user_permissions : Annotated[UserPermission, De
 
     if user_permissions.user_id == Permissions.SpecialUsersID.administrator.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This user_permission can't be deleted")
-
-    if not UserDao.user_has_permission(user_permissions) :
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This permission doesn't exist")
     
-    try:
-        UserDao.delete_user_permission(user_permissions)
-    except:
-        return {'Message' : f"User_permission '{user_permissions.permission_id}' for user '{user_permissions.user_id}' deletion failed"}
-    finally:
-        return {'Message' : f"User_permission '{user_permissions.permission_id}' for user '{user_permissions.user_id}'  successfully deleted"}
-
+    if not UserDao.user_has_permission(user_permissions) :
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"User '{user_permissions.user_id}' has no permission '{user_permissions.permission_id}'")
+    
+    return UserDao.delete_user_permission(user_permissions)
+    
 
 @app.post("/update_weather_data",  name='Update database with data from Weather API', tags=['Backend'])
 async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -212,12 +194,8 @@ async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_cur
     if not Permissions.Permissions.get_data.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    try:
-        await UserDataProc.update_weather_data()
-        return {'Message' : 'Weather data successfully updated'}
-    except Exception as e:
-        return {'Message' : f"Weather data update failed due to {str(e)}"}
-
+    return await UserDataProc.update_weather_data()
+        
 
 @app.post("/train_model/{city}",  name='Force the train of the model', tags=['Backend'])
 async def train_model(city_data: City, current_user: Annotated[User, Depends(authent.get_current_active_user)]):

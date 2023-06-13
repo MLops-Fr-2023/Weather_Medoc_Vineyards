@@ -12,3 +12,4 @@ jose
 mysql-connector-python
 pytest
 httpx
+logging

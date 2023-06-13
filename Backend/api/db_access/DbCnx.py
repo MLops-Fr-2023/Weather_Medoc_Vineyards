@@ -11,10 +11,18 @@ from db_access.DbType import DbType
 from config import conf
 from sqlalchemy import create_engine
 from snowflake.sqlalchemy import URL
+from logger import LoggingConfig
+import logging
 
 config = {**dotenv_values(".env_API")}
 
 db_info = DbInfo(config)
+
+LoggingConfig.setup_logging()
+
+class KeyReturn(Enum):
+    success = "success"
+    error = "error"
 
 class DbCnx(): 
 
@@ -96,8 +104,6 @@ class UserDao():
 
         return permission_ids
 
-
-
     @staticmethod
     def get_user_permissions(user_id: str):
         """
@@ -106,14 +112,21 @@ class UserDao():
         ctx = DbCnx.get_db_cnx()
         cs = UserDao.get_cursor(db_info.db_env, ctx)
         try:
-            request =  f"SELECT * FROM USER_PERMISSION WHERE USER_ID = '{user_id}'"
-            cs.execute(request)
+            request =  f"""
+                SELECT * FROM USER_PERMISSION 
+                WHERE USER_ID = %s
+                """
+            cs.execute(request, (user_id,))
             permissions = cs.fetchall()
             permission_ids = [permission['PERMISSION_ID'] for permission in permissions]
-
+        except Exception as e:
+            msg = f"Failed to get permissions for user '{user_id}'"
+            logging.exception(f"{msg} \n {e}")
+            return None
         finally:
             cs.close()
             ctx.close()
+        
         return permission_ids
     
     @staticmethod
@@ -124,28 +137,43 @@ class UserDao():
         ctx = DbCnx.get_db_cnx()
         cs = ctx.cursor(DictCursor)
         try:
-            request =  f"SELECT USER_ID, PERMISSION_ID FROM USER_PERMISSION "
-            request += f"WHERE user_id = '{userPermission.user_id}' AND permission_id = '{userPermission.permission_id}'"
-            cs.execute(request)
+            request =  f"""
+                SELECT USER_ID, PERMISSION_ID FROM USER_PERMISSION 
+                WHERE USER_ID = %s AND PERMISSION_ID = %s
+                """
+            cs.execute(request, (userPermission.user_id, userPermission.permission_id))
             cnt = cs.fetchall()
-            value = len(cnt) > 0
+            has_permission = len(cnt) > 0
+        except Exception as e:
+            logging.exception(f"Failed to check existence of permission '{userPermission.permission_id}' for user '{userPermission.user_id}'")
+            return None
         finally:
             cs.close()
             ctx.close()
-        return value
+        return has_permission
     
     @staticmethod
     def get_user(user_id: str):
         """
-        Get user with id user_id from table USERS
+        Get user with user_id from table USERS
         """
-        users = UserDao.get_users()   
-        user_ids = [user['USER_ID'] for user in users]
-        for user in users:
-            if user['USER_ID'] == user_id:                
-                user_dict = {key.lower(): value for key, value in user.items()}
-                user_dict['permissions'] = UserDao.get_user_permissions(user_id)
-                return UserInDB(**user_dict)
+        ctx = DbCnx.get_db_cnx()
+        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        try:
+            request = f"""SELECT * FROM USERS WHERE USER_ID = %s"""
+            cs.execute(request, (user_id,))
+            user_dict = cs.fetchone()
+            user_dict = {key.lower(): value for key, value in user_dict.items()}
+        except Exception as e:            
+            logging.exception(f"Failed to get user with user_id '{user_id}' \n {e}")
+            return None
+        finally:
+            cs.close()
+            ctx.close()
+
+        user = User(**user_dict)
+        user.permissions = UserDao.get_user_permissions(user.user_id)
+        return user
         
     @staticmethod
     def add_user(user: UserAdd):
@@ -155,15 +183,23 @@ class UserDao():
         ctx = DbCnx.get_db_cnx()
         cs = UserDao.get_cursor(db_info.db_env, ctx)
         try:
-            request =  f"INSERT INTO USERS (USER_ID, PWD_HASH, FIRSTNAME, LASTNAME, USER_EMAIL, POSITION, CREATE_DATE, LAST_UPD_DATE, ACTIVE) "
-            request += f"VALUES ('{user.user_id}', '{user.pwd_hash}', '{user.firstname}', '{user.lastname}', '{user.user_email}', '{user.position}', CURRENT_DATE, CURRENT_DATE, '{user.active}')"
-            cs.execute(request)            
-            ctx.commit()           
+            request = f"""
+            INSERT INTO USERS (USER_ID, PWD_HASH, FIRSTNAME, LASTNAME, USER_EMAIL, POSITION, CREATE_DATE, LAST_UPD_DATE, ACTIVE) 
+            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_DATE, CURRENT_DATE, %s)
+            """
+            cs.execute(request, (user.user_id, user.pwd_hash, user.firstname, user.lastname, user.user_email, user.position, user.active))  
+            ctx.commit()  
+        except Exception as e:
+            msg = f"User '{user.user_id}' creation failed"
+            logging.exception(f"{msg} \n {e}")
+            return {'error' : {msg}}
         finally:
             cs.close()
             ctx.close()
 
-        return {'Message ' : f"User '{user.user_id}' created"}
+        msg = f"User '{user.user_id}' created successfully"
+        logging.info(msg)
+        return {'success' : msg}
 
     @staticmethod
     def add_user_permission(userPermission: UserPermission):
@@ -173,16 +209,23 @@ class UserDao():
         ctx = DbCnx.get_db_cnx()
         cs = UserDao.get_cursor(db_info.db_env, ctx)
         try:
-            request =  f"INSERT INTO USER_PERMISSION (USER_ID, PERMISSION_ID) "
-            request += f"VALUES ('{userPermission.user_id}', '{userPermission.permission_id}')"
-            cs.execute(request)
+            request = f"""
+            INSERT INTO USER_PERMISSION (USER_ID, PERMISSION_ID)
+            VALUES (%s, %s)
+            """            
+            cs.execute(request, (userPermission.user_id, userPermission.permission_id))
             ctx.commit()
-            print(f"Permission '{userPermission.permission_id}' successfully given to user '{userPermission.user_id}'")
+        except Exception as e:
+            msg = f"Failed to give permission '{userPermission.permission_id}' to user '{userPermission.user_id}'"
+            logging.exception(f"{msg} \n {e}")
+            return {KeyReturn.error, msg}
         finally:
             cs.close()
             ctx.close()
 
-        return {'Message' : f"Permission '{userPermission.permission_id}' successfully given to user '{userPermission.user_id}'"}
+        msg = f"Permission '{userPermission.permission_id}' successfully given to user '{userPermission.user_id}'"
+        logging.info(msg)
+        return {KeyReturn.success : msg}
 
     @staticmethod
     def edit_user(user: User):
@@ -192,24 +235,31 @@ class UserDao():
         ctx = DbCnx.get_db_cnx()
         cs = UserDao.get_cursor(db_info.db_env, ctx)
 
-        request =  f"UPDATE USERS SET "
-        request += f"PWD_HASH = '{user.pwd_hash}', "
-        request += f"FIRSTNAME = '{user.firstname}', "
-        request += f"LASTNAME = '{user.lastname}', "
-        request += f"USER_EMAIL = '{user.user_email}', "
-        request += f"POSITION = '{user.position}', "
-        request += f"LAST_UPD_DATE = CURRENT_DATE, "
-        request += f"ACTIVE = '{user.active}' "
-        request += f"WHERE USER_ID = '{user.user_id}';"
-        
+        request = f"""
+            UPDATE USERS SET 
+            PWD_HASH = %s,
+            FIRSTNAME = %s,
+            LASTNAME = %s,
+            USER_EMAIL = %s,
+            POSITION = %s,
+            LAST_UPD_DATE = CURRENT_DATE,
+            ACTIVE = %s 
+            WHERE USER_ID = %s
+            """
         try:
-            cs.execute(request)    
-            ctx.commit()    
+            cs.execute(request, (user.pwd_hash, user.firstname, user.lastname, user.user_email, user.position, user.active, user.user_id))
+            ctx.commit()   
+        except Exception as e:
+            msg = f"Failed to edit user '{user.user_id}'"
+            logging.exception(f"{msg} \n {e}")
+            return {KeyReturn.error, msg}
         finally:
             cs.close()
             ctx.close()
         
-        return {'Message' : f"User {user.user_id} successfully updated"}
+        msg = f"User '{user.user_id}' successfully updated"
+        logging.info(msg)
+        return {KeyReturn.success : msg}
 
     @staticmethod
     def delete_user(user_id: str):
@@ -222,14 +272,20 @@ class UserDao():
         ctx = DbCnx.get_db_cnx()
         cs = UserDao.get_cursor(db_info.db_env, ctx)        
         try:            
-            request = f"DELETE FROM USERS WHERE USER_ID = '{user_id}'"
-            cs.execute(request)
+            request = f"""DELETE FROM USERS WHERE USER_ID = %s"""
+            cs.execute(request, (user_id,))
             ctx.commit()
+        except Exception as e:
+            msg = f"Failed to delete user '{user_id}'"
+            logging.exception(f"{msg} \n {e}")
+            return {KeyReturn.error, msg}
         finally:
             cs.close()
             ctx.close()
 
-        return {'Message' : f"User '{user_id}' and related permissions successfully deleted"}
+        msg = f"User '{user_id}' successfully deleted"
+        logging.info(msg)
+        return {KeyReturn.success : msg}        
 
     @staticmethod
     def delete_user_permission(userPermission: UserPermission):
@@ -239,14 +295,20 @@ class UserDao():
         ctx = DbCnx.get_db_cnx()
         cs = UserDao.get_cursor(db_info.db_env, ctx)
         try :
-            request = f"DELETE FROM USER_PERMISSION WHERE USER_ID = '{userPermission.user_id}' AND PERMISSION_ID = '{userPermission.permission_id}'"
-            cs.execute(request)
+            request = f"""DELETE FROM USER_PERMISSION WHERE USER_ID = %s AND PERMISSION_ID = %s"""            
+            cs.execute(request, (userPermission.user_id, userPermission.permission_id))
             ctx.commit()
+        except Exception as e:
+            msg = f"Failed to remove permision '{userPermission.permission_id}' to user '{userPermission.user_id}'"
+            logging.exception(f"{msg} \n {e}")
+            return {KeyReturn.error, msg}
         finally:
             cs.close()
             ctx.close()
         
-        return {'Message' : f"Permission '{userPermission.permission_id}' for user {userPermission.user_id} successfully deleted"}
+        msg = f"Permission '{userPermission.permission_id}' successfully removed for user '{userPermission.user_id}'"
+        logging.info(msg)
+        return {KeyReturn.success : msg}        
 
     @staticmethod
     def delete_user_permissions(user_id: str):
@@ -326,7 +388,9 @@ class UserDao():
                 ))
                 nb_rec = LIM_REC_SNFLK  
         except Exception as e:
-            print(f"Engine creation failed for DB {db_env} : {e}")
+            msg = f"Engine creation failed for DB {db_env} : {e}"
+            print(msg)
+            logging.exception(msg)
             return False
         try:
             k = 1
@@ -344,7 +408,9 @@ class UserDao():
                 k += 1
             return True
         except Exception as e:
-            print(f"Data insertion into table WEATHER_DATA failed : {e}")
+            msg = f"Data insertion into table WEATHER_DATA failed : {e}"
+            print(msg)
+            logging.exception(msg)
             return False
         
         return True
