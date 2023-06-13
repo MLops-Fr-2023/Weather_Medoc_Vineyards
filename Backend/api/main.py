@@ -5,12 +5,11 @@ from db_access.DbCnx import UserDao
 from security import authent, Permissions
 from typing import Annotated
 from config import conf
-from business import References
 from business.User import User, UserAdd
 from business.UserPermission import UserPermission
 from business.Token import Token
 from business.City import City
-from business.Dataprocessing import fetch_data
+from business.DataProcessing import UserDataProc
 
 
 app = FastAPI(
@@ -110,16 +109,17 @@ async def add_user_permission(user_permissions_add : Annotated[UserPermission, D
     if not UserDao.user_exists(user_permissions_add.user_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist in User dB")
 
-    if user_permissions_add.permission_id not in References.list_permissions :
+    if user_permissions_add.permission_id not in UserDao.get_permission_ids():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permission not available")
 
     if UserDao.user_has_permission(user_permissions_add) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Permissions already exists")
 
-    
-    UserDao.add_user_permission(user_permissions_add)
-
-    return {'Message' : 'User_permissions successfully added'}
+    try:
+        UserDao.add_user_permission(user_permissions_add)
+        return {'Message' : f"Permission '{user_permissions_add.permission_id}' correctly added to user '{user_permissions_add.user_id}'"}
+    except Exception as e:
+        return {'Message' : f"Add permission '{user_permissions_add.permission_id}' to user '{user_permissions_add.user_id}' failed : {e}"}    
 
 
 @app.post("/edit_user",  name='User edition', tags=['Administrators'])
@@ -200,20 +200,23 @@ async def delete_user_permission(user_permissions : Annotated[UserPermission, De
         return {'Message' : f"User_permission '{user_permissions.permission_id}' for user '{user_permissions.user_id}'  successfully deleted"}
 
 
-@app.post("/get_data",  name='Update database with data from Wheather API', tags=['Backend'])
-async def get_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+@app.post("/update_weather_data",  name='Update database with data from Weather API', tags=['Backend'])
+async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Update table WEATHER_DATA with current data from Wheather API for all cities
     INPUTS :
         current user : str 
     OUTPUTS : Data updated in Snowflake
     """
-    if not Permissions.Permissions.get_data in current_user.permissions:
+    
+    if not Permissions.Permissions.get_data.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-
-    data_list = await fetch_data()
-
-    return {'Message' : 'Data successfully updated'}
+    
+    try:
+        await UserDataProc.update_weather_data()
+        return {'Message' : 'Weather data successfully updated'}
+    except Exception as e:
+        return {'Message' : f"Weather data update failed due to {str(e)}"}
 
 
 @app.post("/train_model/{city}",  name='Force the train of the model', tags=['Backend'])
