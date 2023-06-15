@@ -4,6 +4,11 @@ from config import conf
 import datetime
 from datetime import timedelta
 from db_access.DbCnx import UserDao
+from logger import LoggingConfig
+import logging
+
+
+LoggingConfig.setup_logging()
 
 class UserDataProc():
 
@@ -22,11 +27,16 @@ class UserDataProc():
         columns = UserDataProc.columns_mandatory
         response_historical = dict()
         cities = UserDao.get_cities()
-            
+                
         for city in cities: 
             df_historical = pd.DataFrame(columns=columns)
+
             # date_start <- the day after the last date in WEATHER_DATA
             date_start = UserDao.get_last_date_weather(city)
+            # No need to update if last date in WEATHER_DATA is today (data has already been updated)
+            if date_start.strftime('%Y-%m-%d') == datetime.date.today().strftime('%Y-%m-%d'):
+                return {'success' : "Data already up to date"} 
+            
             date_start = date_start + timedelta(days=1)
             date_start = date_start.strftime('%Y-%m-%d')
             # date_end <- today
@@ -41,6 +51,7 @@ class UserDataProc():
                 'hourly': '1',
                 'interval': '3'
             }
+
             response = requests.get(UserDataProc.URL_HISTORICAL, params)
             response_historical = response.json()
 
@@ -69,9 +80,14 @@ class UserDataProc():
             try:
                 success = UserDao.send_weather_data_from_df_to_db(df_historical)    
                 if success:
-                    print(f"Weather data for '{city}' successfully updated\n")
+                    msg = f"Weather data for '{city}' successfully updated\n"
+                    print(msg)
+                    logging.info(msg)
+
             except Exception as e:
-                print(f"Weather data update for '{city}' failed beacause of {e}\n")
+                msg = f"Weather data update for '{city}' failed because of {e}\n"
+                print(msg)
+                logging.exception(msg)
                 return False
             
         return True
