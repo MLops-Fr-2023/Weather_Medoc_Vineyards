@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airflow-airflow-config
+  namespace: jle-airflow
+data:
+  # Define your configuration key-value pairs here
+  key1: value1
+  key2: value2
