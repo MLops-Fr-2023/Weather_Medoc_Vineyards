@@ -362,6 +362,50 @@ class UserDao():
         return last_date
     
     @staticmethod
+    def get_last_datetime_weather(city: str):
+        ctx = DbCnx.get_db_cnx()
+        cs = UserDao.get_cursor(db_info.db_env, ctx)
+
+        request = """
+        SELECT 
+            MAX(CASE 
+                WHEN LENGTH(TIME) = 5 THEN CONCAT(SUBSTRING(OBSERVATION_TIME, 1, 11), TIME)
+                WHEN LENGTH(TIME) = 4 THEN CONCAT(SUBSTRING(OBSERVATION_TIME, 1, 11), '0', TIME)
+                ELSE NULL
+            END) as LAST_DATETIME
+        FROM 
+            WEATHER_DATA
+        WHERE CITY = %s
+        """
+        try:            
+            ctx.commit()   
+            cs.execute(request, (city,))    
+            last_datetime_dic = cs.fetchone()
+            last_datetime = last_datetime_dic['LAST_DATETIME']
+        finally:
+            cs.close()
+            ctx.close()
+        
+        return last_datetime
+
+    @staticmethod
+    def get_weather_data():
+        """
+        Get weather data from table WHEATHER_DATA
+        """
+        ctx = DbCnx.get_db_cnx()
+        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        try:
+            request = "SELECT * FROM WEATHER_DATA"
+            cs.execute(request)
+            weather_data = cs.fetchall()            
+        finally:
+            cs.close()
+            ctx.close()
+
+        return weather_data
+
+    @staticmethod
     def send_weather_data_from_df_to_db(df):   
         db_env = conf.DB_ENV
         mysql_host, mysql_db, mysql_usr, mysql_pwd = [conf.DB_MYSQL_HOST, conf.DB_MYSQL_DBNAME, conf.DB_MYSQL_USER, conf.DB_MYSQL_USR_PWD]
