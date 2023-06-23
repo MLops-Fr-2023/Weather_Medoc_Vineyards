@@ -10,7 +10,7 @@ from business.UserPermission import UserPermission
 from business.Token import Token
 from business.City import City
 from business.DataProcessing import UserDataProc
-
+from training.ModelTools import Tools
 
 app = FastAPI(
     title='Weather API - Château Margaux',
@@ -216,6 +216,13 @@ async def forecast(city_data: City, current_user: Annotated[User, Depends(authen
         city: str 
     OUTPUTS : df with forecast feature overs the next 7-days
     """
+
+    if not Permissions.Permissions.forecast.value in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+
+    df = Tools.get_forecast(city = "Margaux")
+
+    return df
 
 
 if __name__ == "__main__":

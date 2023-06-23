@@ -12,4 +12,7 @@ jose
 mysql-connector-python
 pytest
 httpx
-logging
+tsai
+matplotlib
+sqlalchemy
+snowflake-sqlalchemy
