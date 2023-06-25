@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from datetime import timedelta
 from db_access.DbCnx import UserDao
 from security import authent, Permissions
@@ -10,7 +10,9 @@ from business.UserPermission import UserPermission
 from business.Token import Token
 from business.City import City
 from business.DataProcessing import UserDataProc
+from business.HyperParams import HyperParams
 from training.ModelTools import Tools
+
 
 app = FastAPI(
     title='Weather API - Château Margaux',
@@ -47,7 +49,6 @@ def read_root():
     """
     return "Welcome to the Joffrey LEMERY, Nicolas CARAYON and Jacques DROUVROY weather API (for places around Margaux-Cantenac)"
 
-
 @app.post("/token", response_model=Token, tags=['Clients'])
 async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends()]):
     
@@ -65,11 +66,9 @@ async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends(
     
     return {"access_token": access_token, "token_type": "bearer"}
 
-
 @app.get("/users/me/", response_model=User, tags=['Clients'])
 async def read_users_me(current_user: Annotated[User, Depends(authent.get_current_user)]):
     return current_user
-
 
 @app.post("/add_user",  name='Add user', tags=['Administrators'])
 async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -88,8 +87,7 @@ async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annot
     user_add.pwd_hash = authent.pwd_context.hash(user_add.pwd_hash)
     
     return UserDao.add_user(user_add)
-        
-
+      
 @app.post("/add_user_permission",  name='Associate permissions to a user', tags=['Administrators'])
 async def add_user_permission(user_permissions_add : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -118,7 +116,6 @@ async def add_user_permission(user_permissions_add : Annotated[UserPermission, D
 
     return UserDao.add_user_permission(user_permissions_add)           
     
-
 @app.post("/edit_user",  name='User edition', tags=['Administrators'])
 async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -140,7 +137,6 @@ async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotate
     user.pwd_hash = authent.pwd_context.hash(user.pwd_hash)
     return UserDao.edit_user(user)
 
-
 @app.post("/delete_user",  name='Delete a user from the dB', tags=['Administrators'])
 async def delete_user(user_id : str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -161,7 +157,6 @@ async def delete_user(user_id : str, current_user: Annotated[User, Depends(authe
 
     return UserDao.delete_user(user_id)
     
-
 @app.post("/delete_user_permission",  name='Remove permission to user', tags=['Administrators'])
 async def delete_user_permission(user_permissions : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -181,7 +176,6 @@ async def delete_user_permission(user_permissions : Annotated[UserPermission, De
     
     return UserDao.delete_user_permission(user_permissions)
     
-
 @app.post("/update_weather_data",  name='Update database with data from Weather API', tags=['Backend'])
 async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -196,20 +190,21 @@ async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_cur
     
     return await UserDataProc.update_weather_data()
         
-
 @app.post("/train_model/{city}",  name='Force the train of the model', tags=['Backend'])
-async def train_model(city_data: City, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams, train_label:str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Update the model by training it - Can take some times (training time)
     INPUTS :
         current user : str 
     OUTPUTS : Data updated in Snowflake
     """
-    return {'Message' : 'Not released'}
+    if not Permissions.Permissions.training.value in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
+    return Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label='iteration_label')    
 
 @app.post("/forecast_city/{city}",  name='Forecast 7-days', tags=['Backend'])
-async def forecast(city_data: City, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+async def forecast(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Returns the forecast of weather feature for city = {city}.
     INPUTS :
@@ -219,10 +214,11 @@ async def forecast(city_data: City, current_user: Annotated[User, Depends(authen
 
     if not Permissions.Permissions.forecast.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-
-    df = Tools.get_forecast(city = "Margaux")
-
-    return df
+    try:
+        df = Tools.get_forecast(city = city.name_city)
+        return df
+    except Exception as e:
+        return {'error': 'Forecast failed'}    
 
 
 if __name__ == "__main__":

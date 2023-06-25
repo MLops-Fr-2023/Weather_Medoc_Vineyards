@@ -1,3 +1,4 @@
+import pandas as pd
 from snowflake.connector import connect, DictCursor
 from dotenv import dotenv_values
 from business.User import UserInDB, UserAdd, User
@@ -404,6 +405,14 @@ class UserDao():
             ctx.close()
 
         return weather_data
+
+    @staticmethod
+    def get_weather_data_df():
+        weather_dict = UserDao.get_weather_data()
+        df = pd.DataFrame(weather_dict)
+        df = df.set_index('ID')
+        return df
+
 
     @staticmethod
     def send_weather_data_from_df_to_db(df):   

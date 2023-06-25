@@ -1,6 +1,8 @@
 /Backend/weaterAUS.csv
 /Backend/data/
 /Backend/models/
+/Backend/api/mlruns
+/Backend/api/training/mlruns
 /Backend/full.json
 /Backend/lite.json
 *.pyc
