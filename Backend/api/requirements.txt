@@ -16,3 +16,5 @@ tsai
 matplotlib
 sqlalchemy
 snowflake-sqlalchemy
+mlflow
+pyarrow>=10.0.1,<10.1.0
