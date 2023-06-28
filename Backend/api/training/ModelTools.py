@@ -10,6 +10,7 @@ import mlflow.fastai
 import mlflow
 import logging
 from logger import LoggingConfig
+from datetime import datetime
 
 import os
 import pathlib
@@ -216,4 +217,20 @@ class Tools():
                 mlflow.fastai.log_model(learn, "model")
                 matplotlib.pyplot.close()
 
-        return {'success': 'Training terminated'}                
+        return {'success': f"Training '{train_label}' terminated - Hyperparamaters : {hyper_params}"}       
+
+    def launch_trainings(city:str, hyper_params_dict):
+        start_time = datetime.now()
+        try:
+            for hp_key in hyper_params_dict.keys():
+                data = hyper_params_dict[hp_key]
+                init_time = datetime.now()
+                formatted_now = init_time.strftime("training_%Y%m%d_%H%M%S")
+                Tools.train_model(city=city, hyper_params=data, train_label=formatted_now)
+                logging.error(f"Trained model successfully with hyperparameters : {data}")
+
+            total_time = datetime.now() - start_time        
+            return {"success", f"Trainings performed in {total_time}"}
+        except Exception as e:
+            logging.error(f"Trainings failed : {e}")
+            return {"error": f"Trainings failed : {e}"}
