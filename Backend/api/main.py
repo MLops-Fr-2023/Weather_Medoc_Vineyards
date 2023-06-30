@@ -12,7 +12,8 @@ from business.City import City
 from business.DataProcessing import UserDataProc
 from business.HyperParams import HyperParams
 from training.ModelTools import Tools
-
+from typing import Dict
+from fastapi import Body
 
 app = FastAPI(
     title='Weather API - Château Margaux',
@@ -189,19 +190,6 @@ async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_cur
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
     return await UserDataProc.update_weather_data()
-        
-@app.post("/train_model/{city}",  name='Force the train of the model', tags=['Backend'])
-async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams, train_label:str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
-
-    """Update the model by training it - Can take some times (training time)
-    INPUTS :
-        current user : str 
-    OUTPUTS : Data updated in Snowflake
-    """
-    if not Permissions.Permissions.training.value in current_user.permissions:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-
-    return Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label='iteration_label')    
 
 @app.post("/forecast_city/{city}",  name='Forecast 7-days', tags=['Backend'])
 async def forecast(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -219,6 +207,31 @@ async def forecast(city: Annotated[City, Depends()], current_user: Annotated[Use
         return df
     except Exception as e:
         return {'error': 'Forecast failed'}    
+
+@app.post("/train_model/{city}",  name='Laucn model training with a given set of hyperparamaters', tags=['Backend'])
+async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams, train_label:str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+
+    """Update the model by training it - Can take some times (training time)
+    INPUTS :
+        current user : str 
+    OUTPUTS : Data updated in Snowflake
+    """
+    if not Permissions.Permissions.training.value in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+
+    return Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label='iteration_label')    
+
+@app.post("/train_models/{city}",  name='Launch several trainings for hyperparameters optimization', tags=['Backend'])
+async def train_models(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)], hyper_params_dict: Dict[str, HyperParams] = Body(...)):
+    """Launch trainings of the model with the hyperparameters defined in hyper_params_dict"""
+
+    if not Permissions.Permissions.training.value in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+    
+    try:
+        return Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict)               
+    except Exception as e:
+        return {'error': 'launch_trainings failed'}    
 
 
 if __name__ == "__main__":
