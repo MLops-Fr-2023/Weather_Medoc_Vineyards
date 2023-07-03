@@ -219,7 +219,7 @@ async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParam
     if not Permissions.Permissions.training.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    return Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label='iteration_label')    
+    return Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label=train_label)    
 
 @app.post("/train_models/{city}",  name='Launch several trainings for hyperparameters optimization', tags=['Backend'])
 async def train_models(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)], hyper_params_dict: Dict[str, HyperParams] = Body(...)):
@@ -229,7 +229,7 @@ async def train_models(city: Annotated[City, Depends()], current_user: Annotated
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
     try:
-        return Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict)               
+        return Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict, train_lable=train_label)               
     except Exception as e:
         return {'error': 'launch_trainings failed'}    
 

@@ -16,5 +16,6 @@ class HyperParams(BaseModel):
     arch_config  : Optional[ArchConfig] = None
     batch_size   : Optional[int] = 16  # batch size
     fcst_history : Optional[int] = 400 # forecast history
-    fcst_horizon : Optional[int] = 8   # forecast horizon
+    fcst_horizon : Optional[int] = 56   # forecast horizon (56 == 7 days)
+    n_epochs     : Optional[int] = 1  # number of epoch for training
 
