@@ -14,6 +14,9 @@ from sqlalchemy import create_engine
 from snowflake.sqlalchemy import URL
 from logger import LoggingConfig
 import logging
+from datetime import datetime
+import os
+from fastapi.responses import HTMLResponse
 
 config = {**dotenv_values(".env_API")}
 
@@ -39,7 +42,7 @@ class DbCnx():
                 database  = db_info.db_name,
                 schema    = db_info.db_schema
             )
-        elif db_info.db_env == DbType.mysql.value:
+        elif db_info.db_env == DbType.mysql.value:            
             db_cnx = connect_mysql(
                 user      = db_info.db_user,
                 password  = db_info.db_pwd,
@@ -47,7 +50,6 @@ class DbCnx():
                 database  = db_info.db_name)
     
         return db_cnx
-
 
 class UserDao():
 
@@ -350,10 +352,12 @@ class UserDao():
     def get_last_date_weather(city: str):
         ctx = DbCnx.get_db_cnx()
         cs = UserDao.get_cursor(db_info.db_env, ctx)
-        request =  f"SELECT max(OBSERVATION_TIME) as LAST_DATE FROM WEATHER_DATA "
-        request += f"WHERE CITY = '{city}'"
+        request =  f"""SELECT max(OBSERVATION_TIME) as LAST_DATE 
+                       FROM WEATHER_DATA 
+                       WHERE CITY = %s
+                    """        
         try:
-            cs.execute(request)    
+            cs.execute(request, (city,))    
             last_date_dic = cs.fetchone()
             last_date = last_date_dic['LAST_DATE']
         finally:
@@ -361,6 +365,23 @@ class UserDao():
             ctx.close()
         
         return last_date
+    
+    @staticmethod
+    def empty_weather_data():
+        ctx = DbCnx.get_db_cnx()
+        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        request = f"DELETE FROM WEATHER_DATA"        
+        try:
+            cs.execute(request)                
+            ctx.commit()
+            logging.info("Delete all records from table WEATHER_DATA")
+            return {'success': "Weather data successfully deleted"}
+        except Exception as e:
+            logging.error(f"Data deletion from table WEATHER_DATA failed : {e}")
+            return {'error': f"Weather data deletion failed : {e}"}
+        finally:
+            cs.close()
+            ctx.close()
     
     @staticmethod
     def get_last_datetime_weather(city: str):
@@ -412,7 +433,6 @@ class UserDao():
         df = pd.DataFrame(weather_dict)
         df = df.set_index('ID')
         return df
-
 
     @staticmethod
     def send_weather_data_from_df_to_db(df):   
@@ -467,3 +487,14 @@ class UserDao():
             return False
         
         return True
+    
+    @staticmethod
+    def get_logs():
+        log_path = "logs/app_" + datetime.now().strftime('%Y%m%d') + ".log"
+        if os.path.exists(log_path):
+            with open(log_path, 'r') as log_file:
+                logs = log_file.read()
+                formatted_logs = "<pre>" + logs + "</pre>"
+                return HTMLResponse(content=formatted_logs)
+        else:
+            return "No log file found for today"

@@ -1,0 +1,18 @@
+version: '3'
+services:
+  db_mysql:
+    build: ./databases
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: MYSQL_ROOT_PASSWORD
+      MYSQL_DATABASE: MYSQL_DATABASE
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db_mysql
+volumes:
+  db_data: {}

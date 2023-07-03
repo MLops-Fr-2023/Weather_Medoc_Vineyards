@@ -12,6 +12,7 @@ from business.City import City
 from business.DataProcessing import UserDataProc
 from business.HyperParams import HyperParams
 from training.ModelTools import Tools
+from security.Permissions import SpecialUsersID
 from typing import Dict
 from fastapi import Body
 
@@ -177,6 +178,29 @@ async def delete_user_permission(user_permissions : Annotated[UserPermission, De
     
     return UserDao.delete_user_permission(user_permissions)
     
+@app.post("/get_logs",  name='Get logs', tags=['Administrators'])
+async def get_logs(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+    """Get log file"""
+    
+    if current_user.user_id != SpecialUsersID.administrator.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+
+    return UserDao.get_logs()
+
+@app.post("/populate_weather_table",  name='Populate wheather table with historical data from Weather API', tags=['Backend'])
+async def populate_weather_table(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+
+    """Update table WEATHER_DATA with current data from Wheather API for all cities
+    INPUTS :
+        current user : str 
+    OUTPUTS : Data updated in Snowflake
+    """
+    
+    if not Permissions.Permissions.get_data.value in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+    
+    return await UserDataProc.insert_weather_data_historical()
+
 @app.post("/update_weather_data",  name='Update database with data from Weather API', tags=['Backend'])
 async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -190,6 +214,15 @@ async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_cur
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
     return await UserDataProc.update_weather_data()
+
+@app.post("/delete_weather_data",  name='Delete all weather data from database', tags=['Backend'])
+async def delete_weather_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+    """Empty table WEATHER_DATA """
+    
+    if not Permissions.Permissions.get_data.value in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+    
+    return UserDao.empty_weather_data()
 
 @app.post("/forecast_city/{city}",  name='Forecast 7-days', tags=['Backend'])
 async def forecast(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -208,7 +241,7 @@ async def forecast(city: Annotated[City, Depends()], current_user: Annotated[Use
     except Exception as e:
         return {'error': 'Forecast failed'}    
 
-@app.post("/train_model/{city}",  name='Laucn model training with a given set of hyperparamaters', tags=['Backend'])
+@app.post("/train_model/{city}",  name='Launch model training with a given set of hyperparamaters', tags=['Backend'])
 async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams, train_label:str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Update the model by training it - Can take some times (training time)

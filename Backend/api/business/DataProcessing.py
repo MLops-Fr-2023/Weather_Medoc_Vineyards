@@ -6,9 +6,13 @@ from datetime import timedelta
 from db_access.DbCnx import UserDao
 from logger import LoggingConfig
 import logging
+import gdown
+from dotenv import dotenv_values
 
 
 LoggingConfig.setup_logging()
+
+config = {**dotenv_values(".env_API")}
 
 class UserDataProc():
 
@@ -16,6 +20,40 @@ class UserDataProc():
     columns_mandatory = ['observation_time','temperature','weather_code','wind_speed',
                          'wind_degree','wind_dir','pressure','precip','humidity',
                          'cloudcover','feelslike','uv_index','visibility','time','city']
+    
+    file_id = config['FILE_ID']
+    URL_HIST_DATA = f"https://drive.google.com/uc?id={file_id}"
+
+    def send_data_to_db(df, engine, nb_rec):    
+        k = 1
+        terminated = False
+        nb_loops = df.shape[0] // nb_rec + 1
+        while not terminated:
+            print(f"Loop {k} on {nb_loops}")
+            if k*nb_rec < df.shape[0]:
+                df_tmp = df[(k-1)*nb_rec : k*nb_rec]
+            else:
+                df_tmp = df[(k-1)*nb_rec :]
+                terminated = True
+            
+            df_tmp.to_sql(name='WEATHER_DATA', con=engine, if_exists = 'append', index=False)
+            k += 1
+
+    @staticmethod
+    async def insert_weather_data_historical():
+        try : 
+            gdown.download(UserDataProc.URL_HIST_DATA, 'output.csv', quiet=False)
+            df = pd.read_csv('output.csv')
+
+            df = df.drop(columns=['Unnamed: 0'])
+            df = df.reset_index()
+            df.rename(columns = {'index':'id'}, inplace = True)
+
+            UserDao.send_weather_data_from_df_to_db(df) 
+            logging.info(f"Historical data successfully added to table WEATHER_DATA")                                                                            
+            return {'success' : 'Historical data successfully inserted into db'}
+        except Exception as e:
+            return {'error': f"Historical data insertion failed : {e}"}
 
     @staticmethod
     async def update_weather_data():
@@ -91,6 +129,11 @@ class UserDataProc():
                 return False
             
         return True
+
+    @staticmethod
+    async def delete_weather_data():
+
+        return {}
      
 
                     
