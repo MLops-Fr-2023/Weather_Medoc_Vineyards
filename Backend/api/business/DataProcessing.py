@@ -1,27 +1,29 @@
-import requests
-import pandas as pd
-from config import conf
-import datetime
-from datetime import timedelta
-from db_access.DbCnx import UserDao
-from logger import LoggingConfig
-import logging
 import gdown
+import logging
+import requests
+import datetime
+import pandas as pd
+from datetime import timedelta
+from logger import LoggingConfig
 from dotenv import dotenv_values
-
+from db_access.DbCnx import UserDao
+from config.variables import varenv_securapi, varenv_weather_api, URL_data
 
 LoggingConfig.setup_logging()
 
-config = {**dotenv_values(".env_API")}
+#Import des variables
+varenv_securapi = varenv_securapi()
+varenv_weather_api = varenv_weather_api()
+URL_data = URL_data()
 
 class UserDataProc():
 
-    URL_HISTORICAL = "https://api.weatherstack.com/historical"
+    url_historical = URL_data.url_historical
     columns_mandatory = ['observation_time','temperature','weather_code','wind_speed',
                          'wind_degree','wind_dir','pressure','precip','humidity',
                          'cloudcover','feelslike','uv_index','visibility','time','city']
     
-    file_id = config['FILE_ID']
+    file_id = varenv_weather_api.file_id
     URL_HIST_DATA = f"https://drive.google.com/uc?id={file_id}"
 
     def send_data_to_db(df, engine, nb_rec):    
@@ -82,7 +84,7 @@ class UserDataProc():
             date_end = date_end.strftime('%Y-%m-%d')
             
             params = {
-                'access_key': conf.WEATHER_API_KEY,
+                'access_key': varenv_weather_api.weather_api_key,
                 'query': city,
                 'historical_date_start': date_start,
                 'historical_date_end': date_end,

@@ -1,33 +1,32 @@
+import os
+import boto3
+import logging
 import pandas as pd
-from snowflake.connector import connect, DictCursor
-from dotenv import dotenv_values
+from enum import Enum
+from datetime import datetime
+from logger import LoggingConfig
+from db_access.DbType import DbType
+from snowflake.sqlalchemy import URL
+from sqlalchemy import create_engine
+from fastapi.responses import HTMLResponse
 from business.User import UserInDB, UserAdd, User
 from business.UserPermission import UserPermission
+from snowflake.connector import connect, DictCursor
 from mysql.connector import connect as connect_mysql
 from mysql.connector.cursor_cext import CMySQLCursorDict
+from config.variables import S3LogHandler, s3_var_access, s3_access, DbInfo
 from snowflake.connector import connect as connect_sf, DictCursor 
-from enum import Enum
-from db_access.DbInfo import DbInfo
-from db_access.DbType import DbType
-from config import conf
-from sqlalchemy import create_engine
-from snowflake.sqlalchemy import URL
-from logger import LoggingConfig
-import logging
-from datetime import datetime
-import os
-from fastapi.responses import HTMLResponse
-import boto3
-from bucket_access.s3_access import S3LogHandler, s3_access
+
 
 #Opening a Boto session to get acces to the bucket S3 of the projet
 #The EC2 machine has to be configured with AWS CLI and access Key
 
+#Import des variables
+db_info = DbInfo()
+s3_access = s3_access()
+s3_var_access = s3_var_access()
 
-config = {**dotenv_values(".env_API")}
-
-db_info = DbInfo(config)
-
+#Import du logger
 LoggingConfig.setup_logging()
 
 class KeyReturn(Enum):
@@ -36,6 +35,7 @@ class KeyReturn(Enum):
 
 class DbCnx(): 
 
+    #Redondance avec Dbinfo
     @staticmethod
     def get_db_cnx():
         db_cnx = None
@@ -442,10 +442,13 @@ class UserDao():
 
     @staticmethod
     def send_weather_data_from_df_to_db(df):   
-        db_env = conf.DB_ENV
-        mysql_host, mysql_db, mysql_usr, mysql_pwd = [conf.DB_MYSQL_HOST, conf.DB_MYSQL_DBNAME, conf.DB_MYSQL_USER, conf.DB_MYSQL_USR_PWD]
-        snflk_usr, snflk_pwd, snflk_act, snflk_wh, snflk_db, snflk_sch = [conf.USER_SNOWFLAKE, conf.PWD_SNOWFLAKE, conf.ACCOUNT_SNOWFLAKE, 
-                                                                        conf.WAREHOUSE_SNOWFLAKE, conf.DB_SNOWFLAKE, conf.SCHEMA_SNOWFLAKE]
+        db_env = db_info.db_env
+        if db_env == "mysql":
+            mysql_host, mysql_db, mysql_usr, mysql_pwd = [db_info.db_host, db_info.db_name, db_info.db_user, db_info.db_pwd]
+        elif db_env =="snowflake":
+            snflk_usr, snflk_pwd, snflk_act, snflk_wh, snflk_db, snflk_sch = [db_info.db_user, db_info.db_pwd, db_info.db_account,db_info.db_warehouse, db_info.db_name, db_info.db_schema]
+        else:
+            raise Exception("Invalid database environment")
         
         # Limit number of lines to send at a time to each database system
         LIM_REC_SNFLK = 16384
@@ -501,7 +504,7 @@ class UserDao():
             log_path = f"logs/app_{datetime.now().strftime('%Y%m%d')}.log"
 
             # Download log file from S3 bucket
-            s3_access.s3.Object(s3_access.bucket_name, log_path).download_file('/tmp/app.log')
+            s3_access.s3.Object(s3_var_access.bucket_name, log_path).download_file('/tmp/app.log')
             
             # Read the downloaded log file
             with open('/tmp/app.log', 'r') as log_file:
