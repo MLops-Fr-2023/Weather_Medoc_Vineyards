@@ -11,6 +11,10 @@ Parameters:
     Type: String
     Default: ami-05b5a865c3579bbc4
     Description: The AMI identifier to deploy.
+  S3BucketName:
+    Type: String
+    Default: wine-castle-storage
+    Description: Enter the name for the S3 bucket.
 
 
 #VPC
@@ -325,16 +329,52 @@ Resources:
       SubnetId: !Ref  PrivateSubnetCMB
       NetworkAclId: !Ref MyNetworkAcl
 
+#IAM Rôle for S3_access_full
+
+  S3FullAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: S3FullAccessRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  S3FullAccessInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref S3FullAccessRole
+
 #Launch Configuration
   PublicLaunchConfig: 
       Type: AWS::AutoScaling::LaunchConfiguration
       Properties:
         AssociatePublicIpAddress:  True
         ImageId: ami-05b5a865c3579bbc4
-        InstanceType: t2.medium
+        InstanceType: t3.large
         SecurityGroups:
           - !Ref PublicSecurityGroup
         KeyName: JLE_pytorch_paris
+        IamInstanceProfile: !Ref S3FullAccessInstanceProfile
+
+#Launch Configuration
+  PrivateLaunchConfig: 
+      Type: AWS::AutoScaling::LaunchConfiguration
+      Properties:
+        AssociatePublicIpAddress:  False
+        ImageId: ami-05b5a865c3579bbc4
+        InstanceType: t3.large
+        SecurityGroups:
+          - !Ref PrivateSecurityGroup
+        KeyName: JLE_pytorch_paris
+        IamInstanceProfile: !Ref S3FullAccessInstanceProfile
+
 
 #Scaling Group
   PubicScalingGroup:
@@ -349,10 +389,24 @@ Resources:
           - !Ref PublicSubnetCMA
           - !Ref PublicSubnetCMB
         DesiredCapacity: 2
-        MaxSize: 4 
-        MinSize: 2
+        MinSize: 1
+        MaxSize: 4
         TargetGroupARNs: 
         - !Ref PublicTargetGroup
+
+  PrivateAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchConfigurationName: !Ref PrivateLaunchConfig
+      AvailabilityZones:
+          - Fn::Select: [0, Fn::GetAZs: !Ref AWS::Region]
+          - Fn::Select: [1, Fn::GetAZs: !Ref AWS::Region]
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnetCMA
+        - !Ref PrivateSubnetCMB
+      DesiredCapacity: 2
+      MinSize: 1
+      MaxSize: 4
 
   PublicTargetGroup: 
       Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -382,3 +436,48 @@ Resources:
           - Type: forward
             TargetGroupArn: !Ref PublicTargetGroup
 
+  # S3 BUCKET
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref S3BucketName
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: !Ref S3BucketName
+
+
+  # VPC ENDPOINT FOR S3
+  VpcEndpointS3:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      VpcId: !Ref VPCCM
+      ServiceName: !Join ['', ['com.amazonaws.', !Ref 'AWS::Region', '.s3']]
+      RouteTableIds:
+        - !Ref PrivateRouteTableCMA
+        - !Ref PrivateRouteTableCMB
+
+
+Outputs:
+  VPCOutput:
+    Value: !Ref VPCCM
+
+  PublicSubnetOutputCMA:
+    Value: !Ref PublicSubnetCMA
+
+  PublicSubnetOutputCMB:
+    Value: !Ref PublicSubnetCMB
+
+  PrivateSubnetOutputCMA:
+    Value: !Ref PrivateSubnetCMA
+
+  PrivateSubnetOutputCMB:
+    Value: !Ref PrivateSubnetCMB
+
+  S3BucketOutput:
+    Value: !Ref S3Bucket
