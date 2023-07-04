@@ -21,3 +21,4 @@ pyarrow>=10.0.1,<10.1.0
 scikit-learn==1.2.2
 imbalanced-learn==0.10.1
 gdown
+boto3 == 1.26.164

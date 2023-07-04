@@ -11,6 +11,7 @@ import mlflow
 import logging
 from logger import LoggingConfig
 from datetime import datetime
+from bucket_access.s3_access import S3LogHandler, s3_access
 
 import os
 import pathlib
@@ -36,7 +37,7 @@ class Tools():
     x_vars = columns_keep
     y_vars = columns_keep
 
-    n_epochs = 50
+    n_epochs = 1
 
     preproc_pipe = sklearn.pipeline.Pipeline([
         ('shrinker', TSShrinkDataFrame()), # shrink dataframe memory usage
@@ -116,6 +117,19 @@ class Tools():
 
         return results_df
 
+    #Version logger
+    def push_mlruns(MLobject):
+        #os.makedirs('mlflow/mlruns', exist_ok=True)
+        log_path = "mlflow/mlruns/"
+        s3_handler = S3LogHandler(s3_access.bucket_name, log_path)
+        #mlflow.log_metrics(all_metrics).addHandler(s3_handler)
+        MLobject.addHandler(s3_handler)
+
+    #Version Upload
+    # def upload_file_to_s3(file_path, s3_key):
+    #     s3_client = s3_access.s3.meta.client
+    #     s3_client.upload_file(file_path, s3_access.bucket_name, s3_key)
+
     def get_forecast(city):
         try:
             # Creating dates to have for inference
@@ -171,6 +185,8 @@ class Tools():
         with mlflow.start_run():
             with mlflow.start_run(description = train_label,nested=True):
 
+                run = mlflow.active_run()
+                logger = logging.getLogger(run.info.run_id)
                 print(f"\n {train_label} \n")       
                 # Initialize model and trainer
                 hyper_params = Tools.get_hyperparameters()
@@ -216,6 +232,10 @@ class Tools():
                 mlflow.log_artifact('scores.csv')
                 mlflow.fastai.log_model(learn, "model")
                 matplotlib.pyplot.close()
+
+                # Add a handler to upload mlrun files to S3
+                Tools.push_mlruns(logger)
+
 
         return {'success': f"Training '{train_label}' terminated - Hyperparamaters : {hyper_params}"}       
 
