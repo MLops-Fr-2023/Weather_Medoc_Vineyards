@@ -1,18 +1,25 @@
 version: '3'
 services:
   db_mysql:
-    build: ./databases
+    build: 
+      context: ./databases
     volumes:
       - db_data:/var/lib/mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: MYSQL_ROOT_PASSWORD
-      MYSQL_DATABASE: MYSQL_DATABASE
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    
   api:
-    build: ./api
+    build:
+      context: ./api
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     ports:
       - "8000:8000"
     depends_on:
       - db_mysql
+
 volumes:
   db_data: {}

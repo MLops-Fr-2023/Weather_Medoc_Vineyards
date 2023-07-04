@@ -17,6 +17,12 @@ import logging
 from datetime import datetime
 import os
 from fastapi.responses import HTMLResponse
+import boto3
+from bucket_access.s3_access import S3LogHandler, s3_access
+
+#Opening a Boto session to get acces to the bucket S3 of the projet
+#The EC2 machine has to be configured with AWS CLI and access Key
+
 
 config = {**dotenv_values(".env_API")}
 
@@ -487,14 +493,24 @@ class UserDao():
             return False
         
         return True
-    
+
     @staticmethod
     def get_logs():
-        log_path = "logs/app_" + datetime.now().strftime('%Y%m%d') + ".log"
-        if os.path.exists(log_path):
-            with open(log_path, 'r') as log_file:
+        try:
+            #Find the logs
+            log_path = f"logs/app_{datetime.now().strftime('%Y%m%d')}.log"
+
+            # Download log file from S3 bucket
+            s3_access.s3.Object(s3_access.bucket_name, log_path).download_file('/tmp/app.log')
+            
+            # Read the downloaded log file
+            with open('/tmp/app.log', 'r') as log_file:
                 logs = log_file.read()
-                formatted_logs = "<pre>" + logs + "</pre>"
-                return HTMLResponse(content=formatted_logs)
-        else:
-            return "No log file found for today"
+            
+            # Format logs as HTML response
+            formatted_logs = "<pre>" + logs + "</pre>"
+            
+            return HTMLResponse(content=formatted_logs)
+        
+        except Exception as e:
+            return f"Error retrieving logs for today: {str(e)}"
