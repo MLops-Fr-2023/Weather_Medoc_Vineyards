@@ -1,20 +1,31 @@
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
-from datetime import timedelta
-from db_access.DbCnx import UserDao
-from security import authent, Permissions
-from typing import Annotated
-from config import conf
-from business.User import User, UserAdd
-from business.UserPermission import UserPermission
-from business.Token import Token
-from business.City import City
-from business.DataProcessing import UserDataProc
-from business.HyperParams import HyperParams
-from training.ModelTools import Tools
-from security.Permissions import SpecialUsersID
 from typing import Dict
 from fastapi import Body
+from typing import Annotated
+from datetime import timedelta
+from business.City import City
+from business.Token import Token
+from db_access.DbCnx import UserDao
+from training.ModelTools import Tools
+from business.User import User, UserAdd
+from security import authent, Permissions
+from business.HyperParams import HyperParams
+from config.variables import varenv_securapi
+from security.Permissions import SpecialUsersID
+from business.DataProcessing import UserDataProc
+from business.UserPermission import UserPermission
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, HTTPException, status
+
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:5000",
+    "s3://datalake-weather-castle/mlflow/",
+    "https://datalake-weather-castle.s3.eu-west-3.amazonaws.com/mlflow/",
+    "https://datalake-weather-castle.s3.eu-west-3.amazonaws.com/mlflow/"
+    # Add more allowed origins as needed
+]
 
 app = FastAPI(
     title='Weather API - Château Margaux',
@@ -41,6 +52,17 @@ description="API for the weather forecasting around Château Margaux",
         'description': 'Functions related to admins'
     }])
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+############ Variables ############
+
+varenv_securapi = varenv_securapi()
 
 ############## Roads ##############
 
@@ -61,7 +83,7 @@ async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token_expires = timedelta(minutes=int(conf.ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token_expires = timedelta(minutes=int(varenv_securapi.access_token_expire_minutes))
     access_token = authent.create_access_token(
         data={"sub": user.user_id}, expires_delta=access_token_expires
     )
@@ -242,7 +264,8 @@ async def forecast(city: Annotated[City, Depends()], current_user: Annotated[Use
         return {'error': 'Forecast failed'}    
 
 @app.post("/train_model/{city}",  name='Launch model training with a given set of hyperparamaters', tags=['Backend'])
-async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams, train_label:str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams, train_label:str, 
+                      current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """Update the model by training it - Can take some times (training time)
     INPUTS :
@@ -252,17 +275,18 @@ async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParam
     if not Permissions.Permissions.training.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    return Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label='iteration_label')    
+    return Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label=train_label)    
 
 @app.post("/train_models/{city}",  name='Launch several trainings for hyperparameters optimization', tags=['Backend'])
-async def train_models(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)], hyper_params_dict: Dict[str, HyperParams] = Body(...)):
+async def train_models(city: Annotated[City, Depends()], train_label: str,
+                       current_user: Annotated[User, Depends(authent.get_current_active_user)], hyper_params_dict: Dict[str, HyperParams] = Body(...)):
     """Launch trainings of the model with the hyperparameters defined in hyper_params_dict"""
 
     if not Permissions.Permissions.training.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
     try:
-        return Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict)               
+        return Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict, train_label=train_label)               
     except Exception as e:
         return {'error': 'launch_trainings failed'}    
 

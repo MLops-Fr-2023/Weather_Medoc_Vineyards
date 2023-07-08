@@ -1,11 +1,13 @@
-import logging
-from datetime import datetime 
 import os
 import boto3
-from bucket_access.s3_access import S3LogHandler, s3_access
+import logging
+from datetime import datetime 
+from dotenv import dotenv_values
+from config.variables import S3LogHandler, s3_var_access
 
 date_string = datetime.now().strftime('%Y%m%d')
- 
+s3_var_access = s3_var_access()
+
 def setup_logging():
     os.makedirs('logs', exist_ok=True)
     date_string = datetime.now().strftime('%Y%m%d')
@@ -21,7 +23,7 @@ def setup_logging():
     )
 
     # Add a handler to upload log files to S3
-    s3_handler = S3LogHandler(s3_access.bucket_name, log_path)
+    s3_handler = S3LogHandler(s3_var_access.bucket_name, log_path)
     logging.getLogger().addHandler(s3_handler)
 
 

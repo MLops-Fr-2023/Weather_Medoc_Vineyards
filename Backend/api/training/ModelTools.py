@@ -1,44 +1,48 @@
-import pandas as pd
-import sklearn
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-from tsai.inference import load_learner
-from tsai.basics import *
-from db_access.DbCnx import UserDao
-from business.HyperParams import HyperParams, ArchConfig
-from db_access.DbCnx import UserDao
-import mlflow.fastai
+import os
 import mlflow
 import logging
-from logger import LoggingConfig
-from datetime import datetime
-from bucket_access.s3_access import S3LogHandler, s3_access
-
-import os
+import sklearn
 import pathlib
+import pandas as pd
+import mlflow.fastai
+from tsai.basics import *
+from datetime import datetime
+from mlflow import MlflowClient
+from logger import LoggingConfig
+from db_access.DbCnx import UserDao
+from tsai.inference import load_learner
+from business.HyperParams import HyperParams
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+from config.variables import varenv_weather_api, varenv_inference_model, S3LogHandler, s3_var_access, varenv_mlflow
+
 if os.name == 'nt':
     temp = pathlib.PosixPath
     pathlib.PosixPath = pathlib.WindowsPath
-
+    
+#Import du logger
 LoggingConfig.setup_logging()
+
+#Import des variables
+varenv_weather_api = varenv_weather_api()
+varenv_inference_model = varenv_inference_model()
+varenv_mlflow = varenv_mlflow()
+
+client = MlflowClient()
 
 class Tools():
 
-    fcst_history = 365 # steps in the past
-    fcst_horizon = 7   # steps in the future
+    fcst_history = int(varenv_inference_model.fcst_history)  # steps in the past
+    fcst_horizon = int(varenv_inference_model.fcst_horizon)  # steps in the future
     valid_size   = 0.2 # int or float indicating the size of the training set
     test_size    = 0.1 # int or float indicating the size of the test set
 
     datetime_col = "DATE"
     freq = '3H'
+
     
     columns_keep = ['TEMPERATURE','WIND_SPEED','WIND_DEGREE','PRESSURE','PRECIP','HUMIDITY','CLOUDCOVER','FEELSLIKE','UV_INDEX']
     columns_drop = ['WIND_DIR','TIME','CITY','OBSERVATION_TIME','VISIBILITY', 'WEATHER_CODE']
     
-    x_vars = columns_keep
-    y_vars = columns_keep
-
-    n_epochs = 1
-
     preproc_pipe = sklearn.pipeline.Pipeline([
         ('shrinker', TSShrinkDataFrame()), # shrink dataframe memory usage
         ('drop_duplicates', TSDropDuplicates(datetime_col=datetime_col)), # drop duplicate rows (if any)
@@ -55,7 +59,9 @@ class Tools():
     def transform_data(df, city):
         df.insert(0, 'DATE', df['OBSERVATION_TIME'].astype(str) + ' ' + df['TIME'].astype(str))
         df = df.loc[df.CITY == city]
-        df = df.sort_values(by=['DATE'])  # sort lines to have chronological order
+        df = df.drop_duplicates()
+        # sort lines to have chronological order
+        df = df.sort_values(by=['DATE'])  
         df['DATE'] = pd.to_datetime(df['DATE'])
         # reset index to be able to use split function
         df.reset_index(drop = True, inplace = True)                     
@@ -75,16 +81,6 @@ class Tools():
         fig.savefig("predictions.png")
         plt.close(fig)
     
-    def get_hyperparameters(n_layers =3,n_heads=16,d_model=16,d_ff=128,attn_dropout=0.0,dropout=0.3,patch_len=24,stride=24,padding_patch=True,
-                        batch_size=16,fcst_history=400,fcst_horizon=8):
-
-
-        arch_config = ArchConfig(n_layers=n_layers, n_heads=n_heads, d_model=d_model, d_ff=d_ff, attn_dropout=attn_dropout, patch_len=patch_len, 
-                                 stride=stride, padding_patch=padding_patch)
-        hyper_params = HyperParams(arch_config=arch_config, batch_size=batch_size, fcst_history=fcst_history, fcst_horizon=fcst_horizon)
-
-        return hyper_params
-
     def get_var_data(y, fcst_horizon):
         dim_var = (int(y.shape[0]/fcst_horizon) + 1)
         vars = [np.ones(dim_var) for _ in range(len(Tools.columns_keep))] # liste pour stocker les variables
@@ -117,19 +113,6 @@ class Tools():
 
         return results_df
 
-    #Version logger
-    def push_mlruns(MLobject):
-        #os.makedirs('mlflow/mlruns', exist_ok=True)
-        log_path = "mlflow/mlruns/"
-        s3_handler = S3LogHandler(s3_access.bucket_name, log_path)
-        #mlflow.log_metrics(all_metrics).addHandler(s3_handler)
-        MLobject.addHandler(s3_handler)
-
-    #Version Upload
-    # def upload_file_to_s3(file_path, s3_key):
-    #     s3_client = s3_access.s3.meta.client
-    #     s3_client.upload_file(file_path, s3_access.bucket_name, s3_key)
-
     def get_forecast(city):
         try:
             # Creating dates to have for inference
@@ -147,23 +130,24 @@ class Tools():
             save_new_df = new_df
 
             # loading of model
-            learn = load_learner(fname='Margaux_v2b.pt')
-
+            #learn = load_learner(fname='Margaux_v2b.pt')
+            print('model loading...')
+            model_name = varenv_inference_model.model_inference + '-' +city
+            stage = "Production"
+            mlflow.set_tracking_uri(Tools.mlflow_server_port)
+            learn = mlflow.fastai.load_model(model_uri=f"s3://mlflow/{model_name}/{stage}")
+            print('model loaded')
             # todo : make this line work
             # new_df = learn.transform(new_df)
 
-            # inference
-            x_vars = new_df.columns[1:]
-            y_vars = new_df.columns[1:]
-            
             # why y_vars=None ?
-            new_X, _ = prepare_forecasting_data(new_df, fcst_history=Tools.fcst_history, fcst_horizon=0, x_vars=x_vars, y_vars=None)
+            new_X, _ = prepare_forecasting_data(new_df, fcst_history=Tools.fcst_history, fcst_horizon=0, x_vars=Tools.columns_keep, y_vars=None)
             new_scaled_preds, *_ = learn.get_X_preds(new_X)
 
-            new_scaled_preds = to_np(new_scaled_preds).swapaxes(1,2).reshape(-1, len(y_vars))
+            new_scaled_preds = to_np(new_scaled_preds).swapaxes(1,2).reshape(-1, len(Tools.columns_keep))
             dates = pd.date_range(start=fcst_date, periods=Tools.fcst_horizon + 1, freq= Tools.freq)[1:]
             preds_df = pd.DataFrame(dates, columns=[Tools.datetime_col])
-            preds_df.loc[:, y_vars] = new_scaled_preds
+            preds_df.loc[:, Tools.columns_keep] = new_scaled_preds
             # todo : make this line work
             # preds_df = learn.inverse_transform(preds_df)
 
@@ -175,6 +159,7 @@ class Tools():
             return {'error': f"Forecast failed"}        
 
     def train_model(city: str, hyper_params: HyperParams, train_label: str):
+        mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
         df = UserDao.get_weather_data_df()  
@@ -183,70 +168,61 @@ class Tools():
         df = Tools.transform_data(df, city)
         
         with mlflow.start_run():
-            with mlflow.start_run(description = train_label,nested=True):
+            print(f"\n {train_label} \n")  
 
-                run = mlflow.active_run()
-                logger = logging.getLogger(run.info.run_id)
-                print(f"\n {train_label} \n")       
-                # Initialize model and trainer
-                hyper_params = Tools.get_hyperparameters()
+            splits = get_forecasting_splits(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon,
+                                            datetime_col=Tools.datetime_col, valid_size=Tools.valid_size, test_size=Tools.test_size, show_plot = False)
 
-                splits = get_forecasting_splits(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon, datetime_col=Tools.datetime_col,
-                                        valid_size=Tools.valid_size, test_size=Tools.test_size, show_plot = False)
-                train_split = splits[0]
 
-                X, y = prepare_forecasting_data(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon, x_vars=Tools.x_vars, y_vars=Tools.y_vars)
+            X, y = prepare_forecasting_data(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon,
+                                            x_vars=Tools.columns_keep, y_vars=Tools.columns_keep)
 
-                learn = TSForecaster(X, y, splits=splits, batch_size=hyper_params.batch_size, path='model_tsai', pipelines=[Tools.preproc_pipe, Tools.exp_pipe],
+            learn = TSForecaster(X, y, splits=splits, batch_size=hyper_params.batch_size, path='model_tsai', pipelines=[Tools.exp_pipe],
                             arch="PatchTST", arch_config=vars(hyper_params.arch_config), metrics=[mse, mae])
 
-                lr_max = learn.lr_find().valley
-                learn.fit_one_cycle(Tools.n_epochs, lr_max=lr_max)
+            lr_max = learn.lr_find().valley
+            learn.fit_one_cycle(hyper_params.n_epochs, lr_max=lr_max)
+            y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
+            y_test_preds = to_np(y_test_preds)
+            y_test = y[splits[2]]
 
-                y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
-                y_test_preds = to_np(y_test_preds)
-                y_test = y[splits[2]]
+            varlist = Tools.get_var_data(y_test, hyper_params.fcst_horizon)
+            predlist = Tools.get_var_data(y_test_preds, hyper_params.fcst_horizon)
+            results_df = Tools.get_results(df, varlist, predlist)
+            all_metrics = Tools.get_all_metrics(results_df)  
+            Tools.get_chart(results_df, df, varlist, predlist)
 
-                varlist = Tools.get_var_data(y_test, Tools.fcst_horizon)
-                predlist = Tools.get_var_data(y_test_preds, Tools.fcst_horizon)
-                results_df = Tools.get_results(df, varlist, predlist)
-                all_metrics = Tools.get_all_metrics(results_df)
+            logging.info(f"Training performed with hyperparams : {hyper_params}")
 
-                Tools.get_chart(results_df, df, varlist, predlist)
+            # fetch the auto logged parameters and metrics
+            mlflow.log_param("architecture", hyper_params.arch_config)
+            mlflow.log_param("batch size", hyper_params.batch_size)
+            mlflow.log_param("epochs number", hyper_params.n_epochs)
+            mlflow.log_param("fcst_history", hyper_params.fcst_history)
+            mlflow.log_param("fcst_horizon", hyper_params.fcst_horizon)
+            mlflow.log_param("learning rate", lr_max)
 
-                logging.info(f"Training performed with hyperparams : {hyper_params}")
+            mlflow.log_metrics(all_metrics)
 
-                # fetch the auto logged parameters and metrics
-                mlflow.log_param("architecture", hyper_params.arch_config)
-                mlflow.log_param("batch size", hyper_params.batch_size)
-                mlflow.log_param("epochs number", Tools.n_epochs)
-                mlflow.log_param("fcst_history", hyper_params.fcst_history)
-                mlflow.log_param("fcst_horizon", hyper_params.fcst_horizon)
-                mlflow.log_param("learning rate", lr_max)
+            mlflow.log_artifact("predictions.png")
+            results_df.reset_index(inplace=True)
+            results_df.to_csv('scores.csv',index=True)
+            mlflow.log_artifact('scores.csv')
 
-                mlflow.log_metrics(all_metrics)
-
-                mlflow.log_artifact("predictions.png")
-                results_df.reset_index(inplace=True)
-                results_df.to_csv('scores.csv',index=True)
-                mlflow.log_artifact('scores.csv')
-                mlflow.fastai.log_model(learn, "model")
-                matplotlib.pyplot.close()
-
-                # Add a handler to upload mlrun files to S3
-                Tools.push_mlruns(logger)
+            model_name = train_label +'-' +city
+            mlflow.fastai.log_model(fastai_learner = learn, registered_model_name = model_name,
+                                    artifact_path = "model")
+            matplotlib.pyplot.close()
 
 
         return {'success': f"Training '{train_label}' terminated - Hyperparamaters : {hyper_params}"}       
 
-    def launch_trainings(city:str, hyper_params_dict):
+    def launch_trainings(city:str, hyper_params_dict, train_label:str):
         start_time = datetime.now()
         try:
             for hp_key in hyper_params_dict.keys():
                 data = hyper_params_dict[hp_key]
-                init_time = datetime.now()
-                formatted_now = init_time.strftime("training_%Y%m%d_%H%M%S")
-                Tools.train_model(city=city, hyper_params=data, train_label=formatted_now)
+                Tools.train_model(city=city, hyper_params=data, train_label=train_label)
                 logging.error(f"Trained model successfully with hyperparameters : {data}")
 
             total_time = datetime.now() - start_time        

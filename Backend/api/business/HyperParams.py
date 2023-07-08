@@ -1,5 +1,5 @@
-from pydantic import BaseModel
 from typing import Optional
+from pydantic import BaseModel
 
 class ArchConfig(BaseModel):
     n_layers     : Optional[int]   = 3 # number of encoder layers
@@ -16,5 +16,6 @@ class HyperParams(BaseModel):
     arch_config  : Optional[ArchConfig] = None
     batch_size   : Optional[int] = 16  # batch size
     fcst_history : Optional[int] = 400 # forecast history
-    fcst_horizon : Optional[int] = 8   # forecast horizon
+    fcst_horizon : Optional[int] = 24   # forecast horizon
+    n_epochs     : Optional[int] = 1   # epochs number
 
