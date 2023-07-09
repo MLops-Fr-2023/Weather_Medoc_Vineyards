@@ -8,6 +8,7 @@ from logger import LoggingConfig
 from db_access.DbType import DbType
 from snowflake.sqlalchemy import URL
 from sqlalchemy import create_engine
+from business.KeyReturn import KeyReturn
 from fastapi.responses import HTMLResponse
 from business.User import UserInDB, UserAdd, User
 from business.UserPermission import UserPermission
@@ -29,9 +30,6 @@ s3_var_access = s3_var_access()
 #Import du logger
 LoggingConfig.setup_logging()
 
-class KeyReturn(Enum):
-    success = "success"
-    error = "error"
 
 class DbCnx(): 
 
@@ -56,9 +54,7 @@ class DbCnx():
                 database  = db_info.db_name)
     
         return db_cnx
-
-class UserDao():
-
+    
     @staticmethod
     def get_cursor(db_env: str, ctx):
         """
@@ -70,13 +66,15 @@ class UserDao():
             cs = ctx.cursor(cursor_class=CMySQLCursorDict)
         return cs
 
+class UserDao():
+
     @staticmethod
     def get_users():
         """
         Get all users from table USERS
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = "SELECT * FROM USERS"
             cs.execute(request)
@@ -101,7 +99,7 @@ class UserDao():
         Get all permissions from table PERMISSIONS
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = "SELECT * FROM PERMISSIONS"
             cs.execute(request)
@@ -119,7 +117,7 @@ class UserDao():
         Get all permissions for user_id from table USER_PERMISSION
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request =  f"""
                 SELECT * FROM USER_PERMISSION 
@@ -167,7 +165,7 @@ class UserDao():
         Get user with user_id from table USERS
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = f"""SELECT * FROM USERS WHERE USER_ID = %s"""
             cs.execute(request, (user_id,))
@@ -190,25 +188,25 @@ class UserDao():
         Add new user in table USERS
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = f"""
             INSERT INTO USERS (USER_ID, PWD_HASH, FIRSTNAME, LASTNAME, USER_EMAIL, POSITION, CREATE_DATE, LAST_UPD_DATE, ACTIVE) 
             VALUES (%s, %s, %s, %s, %s, %s, CURRENT_DATE, CURRENT_DATE, %s)
             """
             cs.execute(request, (user.user_id, user.pwd_hash, user.firstname, user.lastname, user.user_email, user.position, user.active))  
-            ctx.commit()  
+            ctx.commit()              
         except Exception as e:
             msg = f"User '{user.user_id}' creation failed"
             logging.exception(f"{msg} \n {e}")
-            return {'error' : {msg}}
+            return {KeyReturn.error.value : f"{msg} : {e}"}
         finally:
             cs.close()
             ctx.close()
 
         msg = f"User '{user.user_id}' created successfully"
         logging.info(msg)
-        return {'success' : msg}
+        return {KeyReturn.success.value : msg}
 
     @staticmethod
     def add_user_permission(userPermission: UserPermission):
@@ -216,7 +214,7 @@ class UserDao():
         Give permission_id to user_id by adding record in table USER_PERMISSION
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = f"""
             INSERT INTO USER_PERMISSION (USER_ID, PERMISSION_ID)
@@ -227,14 +225,14 @@ class UserDao():
         except Exception as e:
             msg = f"Failed to give permission '{userPermission.permission_id}' to user '{userPermission.user_id}'"
             logging.exception(f"{msg} \n {e}")
-            return {KeyReturn.error, msg}
+            return {KeyReturn.error.value: f"msg"}
         finally:
             cs.close()
             ctx.close()
 
         msg = f"Permission '{userPermission.permission_id}' successfully given to user '{userPermission.user_id}'"
         logging.info(msg)
-        return {KeyReturn.success : msg}
+        return {KeyReturn.success.value: msg}
 
     @staticmethod
     def edit_user(user: User):
@@ -242,7 +240,7 @@ class UserDao():
         Update user in table USERS with user given in input
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
 
         request = f"""
             UPDATE USERS SET 
@@ -257,18 +255,18 @@ class UserDao():
             """
         try:
             cs.execute(request, (user.pwd_hash, user.firstname, user.lastname, user.user_email, user.position, user.active, user.user_id))
-            ctx.commit()   
+            ctx.commit()               
         except Exception as e:
             msg = f"Failed to edit user '{user.user_id}'"
             logging.exception(f"{msg} \n {e}")
-            return {KeyReturn.error, msg}
+            return {KeyReturn.error.value: msg}
         finally:
             cs.close()
             ctx.close()
         
         msg = f"User '{user.user_id}' successfully updated"
-        logging.info(msg)
-        return {KeyReturn.success : msg}
+        logging.info(f"{msg}")
+        return {KeyReturn.success.value: msg}
 
     @staticmethod
     def delete_user(user_id: str):
@@ -279,7 +277,7 @@ class UserDao():
         # delete user's permissions first because of integrity constraints
         UserDao.delete_user_permissions(user_id)
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)        
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)        
         try:            
             request = f"""DELETE FROM USERS WHERE USER_ID = %s"""
             cs.execute(request, (user_id,))
@@ -287,14 +285,14 @@ class UserDao():
         except Exception as e:
             msg = f"Failed to delete user '{user_id}'"
             logging.exception(f"{msg} \n {e}")
-            return {KeyReturn.error, msg}
+            return {KeyReturn.error.value: msg}
         finally:
             cs.close()
             ctx.close()
 
         msg = f"User '{user_id}' successfully deleted"
         logging.info(msg)
-        return {KeyReturn.success : msg}        
+        return {KeyReturn.success.value: msg}        
 
     @staticmethod
     def delete_user_permission(userPermission: UserPermission):
@@ -302,7 +300,7 @@ class UserDao():
         Delete record (user_id, permission_id) from table USER_PERMISSION
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try :
             request = f"""DELETE FROM USER_PERMISSION WHERE USER_ID = %s AND PERMISSION_ID = %s"""            
             cs.execute(request, (userPermission.user_id, userPermission.permission_id))
@@ -310,14 +308,14 @@ class UserDao():
         except Exception as e:
             msg = f"Failed to remove permision '{userPermission.permission_id}' to user '{userPermission.user_id}'"
             logging.exception(f"{msg} \n {e}")
-            return {KeyReturn.error, msg}
+            return {KeyReturn.error.value: msg}
         finally:
             cs.close()
             ctx.close()
         
         msg = f"Permission '{userPermission.permission_id}' successfully removed for user '{userPermission.user_id}'"
         logging.info(msg)
-        return {KeyReturn.success : msg}        
+        return {KeyReturn.success.value: msg}        
 
     @staticmethod
     def delete_user_permissions(user_id: str):
@@ -325,16 +323,20 @@ class UserDao():
         Delete all permissions associated to user_id in table USER_PERMISSION
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try :
             request = f"DELETE FROM USER_PERMISSION WHERE USER_ID = '{user_id}'"
             cs.execute(request)
             ctx.commit()
+        except Exception as e:
+            msg = f"Failed to delete permissions to user '{user_id}'"
+            logging.exception(f"{msg} \n {e}")
+            return {KeyReturn.error.value: msg}
         finally:
             cs.close()
             ctx.close()
         
-        return {'Message' : f"Permissions for user {user_id} successfully deleted"}
+        return {KeyReturn.success.value : f"Permissions for user {user_id} successfully deleted"}
 
     @staticmethod
     def get_cities():
@@ -342,7 +344,7 @@ class UserDao():
         Get all cities from table CITIES
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = "SELECT CITY FROM CITIES"
             cs.execute(request)
@@ -357,7 +359,7 @@ class UserDao():
     @staticmethod
     def get_last_date_weather(city: str):
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         request =  f"""SELECT max(OBSERVATION_TIME) as LAST_DATE 
                        FROM WEATHER_DATA 
                        WHERE CITY = %s
@@ -375,16 +377,16 @@ class UserDao():
     @staticmethod
     def empty_weather_data():
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         request = f"DELETE FROM WEATHER_DATA"        
         try:
             cs.execute(request)                
             ctx.commit()
             logging.info("Delete all records from table WEATHER_DATA")
-            return {'success': "Weather data successfully deleted"}
+            return {KeyReturn.success.value: "Weather data successfully deleted"}
         except Exception as e:
             logging.error(f"Data deletion from table WEATHER_DATA failed : {e}")
-            return {'error': f"Weather data deletion failed : {e}"}
+            return {KeyReturn.error.value: f"Weather data deletion failed : {e}"}
         finally:
             cs.close()
             ctx.close()
@@ -392,7 +394,7 @@ class UserDao():
     @staticmethod
     def get_last_datetime_weather(city: str):
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
 
         request = """
         SELECT 
@@ -422,7 +424,7 @@ class UserDao():
         Get weather data from table WHEATHER_DATA
         """
         ctx = DbCnx.get_db_cnx()
-        cs = UserDao.get_cursor(db_info.db_env, ctx)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = "SELECT * FROM WEATHER_DATA"
             cs.execute(request)

@@ -7,6 +7,7 @@ from datetime import timedelta
 from logger import LoggingConfig
 from dotenv import dotenv_values
 from db_access.DbCnx import UserDao
+from business.KeyReturn import KeyReturn
 from config.variables import varenv_securapi, varenv_weather_api, URL_data
 
 LoggingConfig.setup_logging()
@@ -53,9 +54,9 @@ class UserDataProc():
 
             UserDao.send_weather_data_from_df_to_db(df) 
             logging.info(f"Historical data successfully added to table WEATHER_DATA")                                                                            
-            return {'success' : 'Historical data successfully inserted into db'}
+            return {KeyReturn.success.value: 'Historical data successfully inserted into db'}
         except Exception as e:
-            return {'error': f"Historical data insertion failed : {e}"}
+            return {KeyReturn.error.value: f"Historical data insertion failed : {e}"}
 
     @staticmethod
     async def update_weather_data():
@@ -73,6 +74,9 @@ class UserDataProc():
 
             # date_start <- the day after the last date in WEATHER_DATA
             date_start = UserDao.get_last_date_weather(city)
+            if date_start is None:
+                return {KeyReturn.error.value: "No weather data in database. Populate Weather table before trying to update data"}
+            
             # No need to update if last date in WEATHER_DATA is today (data has already been updated)
             if date_start.strftime('%Y-%m-%d') == datetime.date.today().strftime('%Y-%m-%d'):
                 return {'success' : "Data already up to date"} 
@@ -92,7 +96,7 @@ class UserDataProc():
                 'interval': '3'
             }
 
-            response = requests.get(UserDataProc.URL_HISTORICAL, params)
+            response = requests.get(UserDataProc.url_historical, params)
             response_historical = response.json()
 
             df_temp = pd.DataFrame.from_dict(response_historical).transpose()
@@ -128,9 +132,11 @@ class UserDataProc():
                 msg = f"Weather data update for '{city}' failed because of {e}\n"
                 print(msg)
                 logging.exception(msg)
-                return False
+                return {KeyReturn.error.value: msg}
             
-        return True
+            msg = f"Weather data successfully updated for all cities"
+            logging.info(msg)
+        return {KeyReturn.success.value: msg}
 
     @staticmethod
     async def delete_weather_data():
