@@ -7,13 +7,13 @@ from db_access.DbCnx import UserDao
 from business.Token import TokenData
 from passlib.context import CryptContext
 from datetime import timedelta, datetime
-from business.User import User, UserInDB
+from business.User import User
 from fastapi import Depends, HTTPException, status
-from config.variables import varenv_securapi, varenv_weather_api
+from config.variables import VarEnvSecurApi
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 #Import des variables
-varenv_securapi = varenv_securapi()
+varenv_securapi = VarEnvSecurApi()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

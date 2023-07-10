@@ -3,10 +3,10 @@ import boto3
 import logging
 from datetime import datetime 
 from dotenv import dotenv_values
-from config.variables import S3LogHandler, s3_var_access
+from config.variables import S3LogHandler, S3VarAccess
 
 date_string = datetime.now().strftime('%Y%m%d')
-s3_var_access = s3_var_access()
+s3_var_access = S3VarAccess()
 
 def setup_logging():
     os.makedirs('logs', exist_ok=True)

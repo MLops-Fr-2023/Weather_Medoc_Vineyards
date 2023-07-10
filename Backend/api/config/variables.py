@@ -6,12 +6,12 @@ from db_access.DbType import DbType
 
 config = {**dotenv_values("api.env")}
 
-class s3_access():
+class S3Access():
     def __init__(self):
         self.session = boto3.Session()
         self.s3 = self.session.resource('s3')
 
-class s3_var_access():
+class S3VarAccess():
     def __init__(self, config=config):
         self.bucket_name = config['BUCKET_NAME']
         self.s3_uri = config['S3_URI']
@@ -30,25 +30,25 @@ class S3LogHandler(logging.StreamHandler):
         # Upload log message to S3 bucket
         self.s3.Object(self.bucket_name, self.log_path).put(Body=log_message)
 
-class varenv_securapi():
+class VarEnvSecurApi():
     def __init__(self, config=config):
         self.secret_key = os.environ.get('SECRET_KEY')
         self.algorithm = os.environ.get('ALGORITHM')
         self.access_token_expire_minutes = config['ACCESS_TOKEN_EXPIRE_MINUTES']
 
-class varenv_weather_api(): 
+class VarEnvWeatherApi(): 
     def __init__(self, config=config):
         self.weather_api_key = os.environ.get('WEATHER_API_KEY')
         self.file_id = os.environ.get('FILE_ID')
 
 
-class varenv_inference_model():
+class VarEnvInferenceModel():
     def __init__(self, config=config):
         self.model_inference = config['MODEL_INFERENCE']
         self.fcst_history = config['FCST_HISTORY']
         self.fcst_horizon = config['FCST_HORIZON']
 
-class varenv_mlflow():
+class VarEnvMLflow():
     def __init__(self, config=config):
         self.mlflow_server_port = config['MLFLOW_SERVER_PORT']
         self.mlflow_exp_name = config['MLFLOW_EXP_NAME']
@@ -70,6 +70,6 @@ class DbInfo():
             self.db_user  = os.environ.get('DB_MYSQL_USER')
             self.db_pwd   = os.environ.get('DB_MYSQL_USR_PWD')
 
-class URL_data():
+class UrlData():
     def __init__(self, config=config):
         self.url_historical = config['URL_HISTORICAL']
