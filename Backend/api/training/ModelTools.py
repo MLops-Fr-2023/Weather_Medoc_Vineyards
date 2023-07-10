@@ -11,6 +11,7 @@ from mlflow import MlflowClient
 from logger import LoggingConfig
 from db_access.DbCnx import UserDao
 from tsai.inference import load_learner
+from business.KeyReturn import KeyReturn
 from business.HyperParams import HyperParams
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from config.variables import varenv_weather_api, varenv_inference_model, S3LogHandler, s3_var_access, varenv_mlflow
@@ -167,53 +168,55 @@ class Tools():
         # transform data
         df = Tools.transform_data(df, city)
         
-        with mlflow.start_run():
-            print(f"\n {train_label} \n")  
+        try : 
+            with mlflow.start_run():
+                print(f"\n {train_label} \n")  
 
-            splits = get_forecasting_splits(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon,
-                                            datetime_col=Tools.datetime_col, valid_size=Tools.valid_size, test_size=Tools.test_size, show_plot = False)
+                splits = get_forecasting_splits(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon,
+                                                datetime_col=Tools.datetime_col, valid_size=Tools.valid_size, test_size=Tools.test_size, show_plot = False)
 
 
-            X, y = prepare_forecasting_data(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon,
-                                            x_vars=Tools.columns_keep, y_vars=Tools.columns_keep)
+                X, y = prepare_forecasting_data(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon,
+                                                x_vars=Tools.columns_keep, y_vars=Tools.columns_keep)
 
-            learn = TSForecaster(X, y, splits=splits, batch_size=hyper_params.batch_size, path='model_tsai', pipelines=[Tools.exp_pipe],
-                            arch="PatchTST", arch_config=vars(hyper_params.arch_config), metrics=[mse, mae])
+                learn = TSForecaster(X, y, splits=splits, batch_size=hyper_params.batch_size, path='model_tsai', pipelines=[Tools.exp_pipe],
+                                arch="PatchTST", arch_config=vars(hyper_params.arch_config), metrics=[mse, mae])
 
-            lr_max = learn.lr_find().valley
-            learn.fit_one_cycle(hyper_params.n_epochs, lr_max=lr_max)
-            y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
-            y_test_preds = to_np(y_test_preds)
-            y_test = y[splits[2]]
+                lr_max = learn.lr_find().valley
+                learn.fit_one_cycle(hyper_params.n_epochs, lr_max=lr_max)
+                y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
+                y_test_preds = to_np(y_test_preds)
+                y_test = y[splits[2]]
 
-            varlist = Tools.get_var_data(y_test, hyper_params.fcst_horizon)
-            predlist = Tools.get_var_data(y_test_preds, hyper_params.fcst_horizon)
-            results_df = Tools.get_results(df, varlist, predlist)
-            all_metrics = Tools.get_all_metrics(results_df)  
-            Tools.get_chart(results_df, df, varlist, predlist)
+                varlist = Tools.get_var_data(y_test, hyper_params.fcst_horizon)
+                predlist = Tools.get_var_data(y_test_preds, hyper_params.fcst_horizon)
+                results_df = Tools.get_results(df, varlist, predlist)
+                all_metrics = Tools.get_all_metrics(results_df)  
+                Tools.get_chart(results_df, df, varlist, predlist)
 
-            logging.info(f"Training performed with hyperparams : {hyper_params}")
+                logging.info(f"Training performed with hyperparams : {hyper_params}")
 
-            # fetch the auto logged parameters and metrics
-            mlflow.log_param("architecture", hyper_params.arch_config)
-            mlflow.log_param("batch size", hyper_params.batch_size)
-            mlflow.log_param("epochs number", hyper_params.n_epochs)
-            mlflow.log_param("fcst_history", hyper_params.fcst_history)
-            mlflow.log_param("fcst_horizon", hyper_params.fcst_horizon)
-            mlflow.log_param("learning rate", lr_max)
+                # fetch the auto logged parameters and metrics
+                mlflow.log_param("architecture", hyper_params.arch_config)
+                mlflow.log_param("batch size", hyper_params.batch_size)
+                mlflow.log_param("epochs number", hyper_params.n_epochs)
+                mlflow.log_param("fcst_history", hyper_params.fcst_history)
+                mlflow.log_param("fcst_horizon", hyper_params.fcst_horizon)
+                mlflow.log_param("learning rate", lr_max)
 
-            mlflow.log_metrics(all_metrics)
+                mlflow.log_metrics(all_metrics)
 
-            mlflow.log_artifact("predictions.png")
-            results_df.reset_index(inplace=True)
-            results_df.to_csv('scores.csv',index=True)
-            mlflow.log_artifact('scores.csv')
+                mlflow.log_artifact("predictions.png")
+                results_df.reset_index(inplace=True)
+                results_df.to_csv('scores.csv',index=True)
+                mlflow.log_artifact('scores.csv')
 
-            model_name = train_label +'-' +city
-            mlflow.fastai.log_model(fastai_learner = learn, registered_model_name = model_name,
-                                    artifact_path = "model")
-            matplotlib.pyplot.close()
-
+                model_name = train_label +'-' +city
+                mlflow.fastai.log_model(fastai_learner = learn, registered_model_name = model_name,
+                                        artifact_path = "model")
+                matplotlib.pyplot.close()
+        except Exception as e:
+            return {KeyReturn.error.value: "Training failed : {e}"}
 
         return {'success': f"Training '{train_label}' terminated - Hyperparamaters : {hyper_params}"}       
 
@@ -226,7 +229,7 @@ class Tools():
                 logging.error(f"Trained model successfully with hyperparameters : {data}")
 
             total_time = datetime.now() - start_time        
-            return {"success", f"Trainings performed in {total_time}"}
+            return {KeyReturn.success.value: f"Trainings performed in {total_time}"}
         except Exception as e:
             logging.error(f"Trainings failed : {e}")
-            return {"error": f"Trainings failed : {e}"}
+            return {KeyReturn.error.value: f"Trainings failed : {e}"}

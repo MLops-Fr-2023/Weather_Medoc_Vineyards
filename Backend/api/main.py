@@ -1,4 +1,5 @@
 import uvicorn
+from enum import Enum
 from typing import Dict
 from fastapi import Body
 from typing import Annotated
@@ -8,6 +9,7 @@ from business.Token import Token
 from db_access.DbCnx import UserDao
 from training.ModelTools import Tools
 from business.User import User, UserAdd
+from business.KeyReturn import KeyReturn
 from security import authent, Permissions
 from business.HyperParams import HyperParams
 from config.variables import varenv_securapi
@@ -66,6 +68,12 @@ varenv_securapi = varenv_securapi()
 
 ############## Roads ##############
 
+def Handle_Result(result: Dict[str, str]):
+    if KeyReturn.success.value in result:
+        return result
+    else:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"{result[KeyReturn.error.value]}")
+
 @app.get("/")
 def read_root():
     """"
@@ -91,7 +99,7 @@ async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/users/me/", response_model=User, tags=['Clients'])
-async def read_users_me(current_user: Annotated[User, Depends(authent.get_current_user)]):
+async def read_users_me(current_user: Annotated[User, Depends(authent.get_current_user)]):    
     return current_user
 
 @app.post("/add_user",  name='Add user', tags=['Administrators'])
@@ -110,8 +118,9 @@ async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annot
     
     user_add.pwd_hash = authent.pwd_context.hash(user_add.pwd_hash)
     
-    return UserDao.add_user(user_add)
-      
+    result = UserDao.add_user(user_add)
+    return Handle_Result(result)
+          
 @app.post("/add_user_permission",  name='Associate permissions to a user', tags=['Administrators'])
 async def add_user_permission(user_permissions_add : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -138,8 +147,9 @@ async def add_user_permission(user_permissions_add : Annotated[UserPermission, D
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
                             detail=f"Permission '{user_permissions_add.permission_id}' already given to user '{user_permissions_add.user_id}'")
 
-    return UserDao.add_user_permission(user_permissions_add)           
-    
+    result = UserDao.add_user_permission(user_permissions_add)   
+    return Handle_Result(result)  
+            
 @app.post("/edit_user",  name='User edition', tags=['Administrators'])
 async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -159,7 +169,8 @@ async def edit_user(user : Annotated[UserAdd, Depends()], current_user: Annotate
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"User '{user.user_id}' doesn't exist")
 
     user.pwd_hash = authent.pwd_context.hash(user.pwd_hash)
-    return UserDao.edit_user(user)
+    result = UserDao.edit_user(user)
+    return Handle_Result(result)
 
 @app.post("/delete_user",  name='Delete a user from the dB', tags=['Administrators'])
 async def delete_user(user_id : str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -179,16 +190,14 @@ async def delete_user(user_id : str, current_user: Annotated[User, Depends(authe
     if not UserDao.user_exists(user_id) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User doesn't exist")
 
-    return UserDao.delete_user(user_id)
+    result = UserDao.delete_user(user_id)
+    return Handle_Result(result)
     
 @app.post("/delete_user_permission",  name='Remove permission to user', tags=['Administrators'])
 async def delete_user_permission(user_permissions : Annotated[UserPermission, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Delete a user from table USERS and his permissions from table USER_PERMISSION
-    INPUTS :
-         user to add : Dictionnary
-    OUTPUTS : User added in Snowflake - Users dB 
-    """
+    """Delete permission_id for user_id from table USER_PERMISSION"""
+
     if not Permissions.Permissions.user_mngt.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
@@ -198,7 +207,8 @@ async def delete_user_permission(user_permissions : Annotated[UserPermission, De
     if not UserDao.user_has_permission(user_permissions) :
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"User '{user_permissions.user_id}' has no permission '{user_permissions.permission_id}'")
     
-    return UserDao.delete_user_permission(user_permissions)
+    result = UserDao.delete_user_permission(user_permissions)
+    return Handle_Result(result)
     
 @app.post("/get_logs",  name='Get logs', tags=['Administrators'])
 async def get_logs(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -244,7 +254,8 @@ async def delete_weather_data(current_user: Annotated[User, Depends(authent.get_
     if not Permissions.Permissions.get_data.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
     
-    return UserDao.empty_weather_data()
+    result = UserDao.empty_weather_data()
+    return Handle_Result(result)
 
 @app.post("/forecast_city/{city}",  name='Forecast 7-days', tags=['Backend'])
 async def forecast(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
@@ -257,25 +268,20 @@ async def forecast(city: Annotated[City, Depends()], current_user: Annotated[Use
 
     if not Permissions.Permissions.forecast.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-    try:
-        df = Tools.get_forecast(city = city.name_city)
-        return df
-    except Exception as e:
-        return {'error': 'Forecast failed'}    
+    result = Tools.get_forecast(city = city.name_city)
+    return Handle_Result(result)
 
 @app.post("/train_model/{city}",  name='Launch model training with a given set of hyperparamaters', tags=['Backend'])
 async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams, train_label:str, 
                       current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Update the model by training it - Can take some times (training time)
-    INPUTS :
-        current user : str 
-    OUTPUTS : Data updated in Snowflake
-    """
+    """Launch model training with the hyperparameters given in parameters"""
+
     if not Permissions.Permissions.training.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    return Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label=train_label)    
+    result = Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label=train_label)    
+    return Handle_Result(result)
 
 @app.post("/train_models/{city}",  name='Launch several trainings for hyperparameters optimization', tags=['Backend'])
 async def train_models(city: Annotated[City, Depends()], train_label: str,
@@ -284,12 +290,9 @@ async def train_models(city: Annotated[City, Depends()], train_label: str,
 
     if not Permissions.Permissions.training.value in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-    
-    try:
-        return Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict, train_label=train_label)               
-    except Exception as e:
-        return {'error': 'launch_trainings failed'}    
-
+       
+    result = Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict, train_label=train_label)               
+    return Handle_Result(result)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
