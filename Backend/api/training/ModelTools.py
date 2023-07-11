@@ -14,7 +14,7 @@ from tsai.inference import load_learner
 from business.KeyReturn import KeyReturn
 from business.HyperParams import HyperParams
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from config.variables import varenv_weather_api, varenv_inference_model, S3LogHandler, s3_var_access, varenv_mlflow
+from config.variables import VarEnvWeatherApi, VarEnvInferenceModel, S3LogHandler, S3VarAccess, VarEnvMLflow
 
 if os.name == 'nt':
     temp = pathlib.PosixPath
@@ -24,9 +24,9 @@ if os.name == 'nt':
 LoggingConfig.setup_logging()
 
 #Import des variables
-varenv_weather_api = varenv_weather_api()
-varenv_inference_model = varenv_inference_model()
-varenv_mlflow = varenv_mlflow()
+varenv_weather_api = VarEnvWeatherApi()
+varenv_inference_model = VarEnvInferenceModel()
+varenv_mlflow = VarEnvMLflow()
 
 client = MlflowClient()
 

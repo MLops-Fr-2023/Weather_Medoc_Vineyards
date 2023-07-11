@@ -12,7 +12,7 @@ from business.User import User, UserAdd
 from business.KeyReturn import KeyReturn
 from security import authent, Permissions
 from business.HyperParams import HyperParams
-from config.variables import varenv_securapi
+from config.variables import VarEnvSecurApi
 from security.Permissions import SpecialUsersID
 from business.DataProcessing import UserDataProc
 from business.UserPermission import UserPermission
@@ -64,7 +64,7 @@ app.add_middleware(
 
 ############ Variables ############
 
-varenv_securapi = varenv_securapi()
+varenv_securapi = VarEnvSecurApi()
 
 ############## Roads ##############
 

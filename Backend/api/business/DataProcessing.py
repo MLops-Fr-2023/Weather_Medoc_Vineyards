@@ -8,14 +8,14 @@ from logger import LoggingConfig
 from dotenv import dotenv_values
 from db_access.DbCnx import UserDao
 from business.KeyReturn import KeyReturn
-from config.variables import varenv_securapi, varenv_weather_api, URL_data
+from config.variables import VarEnvSecurApi, VarEnvWeatherApi, UrlData
 
 LoggingConfig.setup_logging()
 
 #Import des variables
-varenv_securapi = varenv_securapi()
-varenv_weather_api = varenv_weather_api()
-URL_data = URL_data()
+varenv_securapi = VarEnvSecurApi()
+varenv_weather_api = VarEnvWeatherApi()
+URL_data = UrlData()
 
 class UserDataProc():
 

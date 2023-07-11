@@ -15,19 +15,18 @@ from business.UserPermission import UserPermission
 from snowflake.connector import connect, DictCursor
 from mysql.connector import connect as connect_mysql
 from mysql.connector.cursor_cext import CMySQLCursorDict
-from config.variables import S3LogHandler, s3_var_access, s3_access, DbInfo
 from snowflake.connector import connect as connect_sf, DictCursor 
+from config.variables import S3LogHandler, S3VarAccess, S3Access, DbInfo
 
+# Opening a Boto session to get acces to the bucket S3 of the projet
+# The EC2 machine has to be configured with AWS CLI and access Key
 
-#Opening a Boto session to get acces to the bucket S3 of the projet
-#The EC2 machine has to be configured with AWS CLI and access Key
-
-#Import des variables
+# Get info to connect to database and AWS bucket
 db_info = DbInfo()
-s3_access = s3_access()
-s3_var_access = s3_var_access()
+s3_access = S3Access()
+s3_var_access = S3VarAccess()
 
-#Import du logger
+# Logger Import 
 LoggingConfig.setup_logging()
 
 
@@ -35,23 +34,23 @@ class DbCnx():
 
     #Redondance avec Dbinfo
     @staticmethod
-    def get_db_cnx():
+    def get_db_cnx(db_cnx_info: DbInfo):
         db_cnx = None
-        if db_info.db_env == DbType.snowflake.value:
+        if db_cnx_info.db_env == DbType.snowflake.value:
             db_cnx = connect_sf(
-                user      = db_info.db_user,
-                password  = db_info.db_pwd,
-                account   = db_info.db_account,
-                warehouse = db_info.db_warehouse,
-                database  = db_info.db_name,
-                schema    = db_info.db_schema
+                user      = db_cnx_info.db_user,
+                password  = db_cnx_info.db_pwd,
+                account   = db_cnx_info.db_account,
+                warehouse = db_cnx_info.db_warehouse,
+                database  = db_cnx_info.db_name,
+                schema    = db_cnx_info.db_schema
             )
         elif db_info.db_env == DbType.mysql.value:            
             db_cnx = connect_mysql(
-                user      = db_info.db_user,
-                password  = db_info.db_pwd,
-                host      = db_info.db_host,
-                database  = db_info.db_name)
+                user      = db_cnx_info.db_user,
+                password  = db_cnx_info.db_pwd,
+                host      = db_cnx_info.db_host,
+                database  = db_cnx_info.db_name)
     
         return db_cnx
     
@@ -73,7 +72,7 @@ class UserDao():
         """
         Get all users from table USERS
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = "SELECT * FROM USERS"
@@ -98,7 +97,7 @@ class UserDao():
         """
         Get all permissions from table PERMISSIONS
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = "SELECT * FROM PERMISSIONS"
@@ -116,7 +115,7 @@ class UserDao():
         """
         Get all permissions for user_id from table USER_PERMISSION
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request =  f"""
@@ -141,7 +140,7 @@ class UserDao():
         """
         Return a boolean indicating whether the user_id has the permission permission_id in table USER_PERMISSION
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = ctx.cursor(DictCursor)
         try:
             request =  f"""
@@ -164,7 +163,7 @@ class UserDao():
         """
         Get user with user_id from table USERS
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = f"""SELECT * FROM USERS WHERE USER_ID = %s"""
@@ -187,7 +186,7 @@ class UserDao():
         """
         Add new user in table USERS
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = f"""
@@ -213,7 +212,7 @@ class UserDao():
         """
         Give permission_id to user_id by adding record in table USER_PERMISSION
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = f"""
@@ -239,7 +238,7 @@ class UserDao():
         """
         Update user in table USERS with user given in input
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
 
         request = f"""
@@ -276,7 +275,7 @@ class UserDao():
         """
         # delete user's permissions first because of integrity constraints
         UserDao.delete_user_permissions(user_id)
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)        
         try:            
             request = f"""DELETE FROM USERS WHERE USER_ID = %s"""
@@ -299,7 +298,7 @@ class UserDao():
         """
         Delete record (user_id, permission_id) from table USER_PERMISSION
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try :
             request = f"""DELETE FROM USER_PERMISSION WHERE USER_ID = %s AND PERMISSION_ID = %s"""            
@@ -322,7 +321,7 @@ class UserDao():
         """
         Delete all permissions associated to user_id in table USER_PERMISSION
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try :
             request = f"DELETE FROM USER_PERMISSION WHERE USER_ID = '{user_id}'"
@@ -343,7 +342,7 @@ class UserDao():
         """
         Get all cities from table CITIES
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = "SELECT CITY FROM CITIES"
@@ -358,7 +357,7 @@ class UserDao():
 
     @staticmethod
     def get_last_date_weather(city: str):
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         request =  f"""SELECT max(OBSERVATION_TIME) as LAST_DATE 
                        FROM WEATHER_DATA 
@@ -376,7 +375,7 @@ class UserDao():
     
     @staticmethod
     def empty_weather_data():
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         request = f"DELETE FROM WEATHER_DATA"        
         try:
@@ -423,7 +422,7 @@ class UserDao():
         """
         Get weather data from table WHEATHER_DATA
         """
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = "SELECT * FROM WEATHER_DATA"
