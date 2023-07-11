@@ -1,9 +1,10 @@
+import os
 import boto3
 import logging
 from dotenv import dotenv_values
 from db_access.DbType import DbType
 
-config = {**dotenv_values(".env_api")}
+config = {**dotenv_values("api.env")}
 
 class s3_access():
     def __init__(self):
@@ -31,14 +32,14 @@ class S3LogHandler(logging.StreamHandler):
 
 class varenv_securapi():
     def __init__(self, config=config):
-        self.secret_key = config['SECRET_KEY']
-        self.algorithm = config['ALGORITHM']
+        self.secret_key = os.environ.get('SECRET_KEY')
+        self.algorithm = os.environ.get('ALGORITHM')
         self.access_token_expire_minutes = config['ACCESS_TOKEN_EXPIRE_MINUTES']
 
 class varenv_weather_api(): 
     def __init__(self, config=config):
-        self.weather_api_key = config['WEATHER_API_KEY']
-        self.file_id = config['FILE_ID']
+        self.weather_api_key = os.environ.get('WEATHER_API_KEY')
+        self.file_id = os.environ.get('FILE_ID')
 
 
 class varenv_inference_model():
@@ -58,16 +59,16 @@ class DbInfo():
         self.db_env = config['DB_ENV'] 
         if self.db_env == DbType.snowflake.value:            
             self.db_name = config['DB_SNOWFLAKE']
-            self.db_user = config['USER_SNOWFLAKE']
-            self.db_pwd  = config['PWD_SNOWFLAKE']
-            self.db_account = config['ACCOUNT_SNOWFLAKE']
+            self.db_user = os.environ.get('USER_SNOWFLAKE')
+            self.db_pwd  = os.environ.get('PWD_SNOWFLAKE')
+            self.db_account = os.environ.get('ACCOUNT_SNOWFLAKE')
             self.db_warehouse = config['WAREHOUSE_SNOWFLAKE']
             self.db_schema = config['SCHEMA_SNOWFLAKE']
         elif self.db_env == DbType.mysql.value:
             self.db_host  = config['DB_MYSQL_HOST']
             self.db_name  = config['DB_MYSQL_DBNAME']
-            self.db_user  = config['DB_MYSQL_USER']
-            self.db_pwd   = config['DB_MYSQL_USR_PWD']
+            self.db_user  = os.environ.get('DB_MYSQL_USER')
+            self.db_pwd   = os.environ.get('DB_MYSQL_USR_PWD')
 
 class URL_data():
     def __init__(self, config=config):

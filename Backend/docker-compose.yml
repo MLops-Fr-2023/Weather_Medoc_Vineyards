@@ -2,16 +2,15 @@ version: '3.3'
 services:
   db_mysql:
     restart: always
-    build: 
+    build:
       context: ./databases
     container_name: db_mysql
     volumes:
       - db_data:/var/lib/mysql
     networks:
-        - backend
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - backend
+    env_file:
+      - ./mysql_secrets.env
     
   api:
     restart: always
@@ -20,9 +19,9 @@ services:
     container_name: api
     networks:
         - backend
+    env_file:
+      - ./api_secrets.env
     environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - TERM=xterm-256color
     ports:
       - "8000:8000"
@@ -34,15 +33,12 @@ services:
     image: postgres:13
     container_name: mlflow_db
     expose:
-        - ${DB_MLF_PORT}
+        - 5432
     networks:
         - backend
-    environment:
-        - MUID=${UID}
-        - MGID=${GID}
-        - POSTGRES_DB=${DB_MLF_NAME}
-        - POSTGRES_USER=${DB_MLF_USER}
-        - POSTGRES_PASSWORD=${DB_MLF_PW}
+    env_file:
+      - ./postgres_secrets.env
+      - ./postgres.env
     volumes:
         - db_datapg:/var/lib/postgresql/data
         - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -54,25 +50,13 @@ services:
     image: mlflow_server
     container_name: mlflow_server
     expose:
-        - ${MLFLOW_PORT}
+        - 5001
     networks:
         - frontend
         - backend
-    environment:
-      #Backend configuration
-        - BACKEND=postgresql://${DB_MLF_USER}:${DB_MLF_PW}@db:${DB_MLF_PORT}/${DB_MLF_NAME}
-
-      # For artifact store in AWS S3 (note boto was installed in container):
-        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-        - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
-        
-      #Bucket configuration
-        - ARTIFACTS=${ARTIFACTS}
-        - MLFLOW_PORT=${MLFLOW_PORT}
-        - MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}
-        - MLFLOW_S3_URL=${MLFLOW_S3_URL}
-        - HOST_MLFLOW_IP=${HOST_MLFLOW_IP}
+    env_file:
+        - ./app_secrets.env
+        - ./app.env
     volumes:
         - mlrun_data:/mlruns
     command: 
@@ -91,7 +75,7 @@ services:
             --port $${MLFLOW_PORT}
             --host $${HOST_MLFLOW_IP}
             --backend-store-uri $${BACKEND} 
-            --default-artifact-root $${ARTIFACTS}
+            --default-artifact-root $${ARTIFACTS}Ò
             --serve-artifacts
 
     depends_on:
@@ -103,7 +87,7 @@ services:
       image: mlflow_nginx
       container_name: mlflow_nginx
       ports:
-          - ${NGINX_MLFLOW_PORT}:80
+          - 5000:80
       networks:
           - frontend
       depends_on:
