@@ -1,52 +1,145 @@
-version: '3.3'
+version: '3.9'
+
+networks:
+  frontend:
+      driver: bridge
+  backend:
+      driver: bridge
+  airflow:
+      driver: bridge
+
+volumes:
+  db_datapg_postresql_mlflow: 
+  db_logs_postresql_mlflow: 
+  db_datapg_postresql_airflow: 
+  db_logs_postresql_airflow: 
+  mlrun_data: 
+  db_data_mysql:
+
 services:
+
   db_mysql:
     restart: always
-    build:
-      context: ./databases
+    build: 
+      context: ${BACKEND_PROJ_DIR}/databases
     container_name: db_mysql
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data_mysql:/var/lib/mysql
     networks:
       - backend
-    env_file:
-      - ./mysql_secrets.env
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pwd
+      MYSQL_DATABASE: wcm_db
+      DB_MYSQL_USER: root
+      DB_MYSQL_HOST: db_mysql
     
+
   api:
     restart: always
     build:
-      context: ./api
+      context: ${BACKEND_PROJ_DIR}/api
     container_name: api
     networks:
         - backend
-    env_file:
-      - ./api_secrets.env
     environment:
-      - TERM=xterm-256color
+      SECRET_KEY: 
+      ALGORITHM: 
+      WEATHER_API_KEY: 
+      #DB - Untagged desired DB
+      DB_ENV: mysql
+      # DB_ENV="snowflake"
+
+      #API Security
+      ACCESS_TOKEN_EXPIRE_MINUTES: 120
+
+      #AWS
+      BUCKET_NAME: datalake-weather-castle
+      S3_URI: s3://datalake-weather-castle/mlflow/
+      S3_PREFIX: mlflow
+      MLFLOW_S3_ENDPOINT_URL: https://datalake-weather-castle.s3.eu-west-3.amazonaws.com/
+
+
+      #Snowflake
+      WAREHOUSE_SNOWFLAKE: COMPUTE_WH
+      DB_SNOWFLAKE: WCM_DB
+      SCHEMA_SNOWFLAKE: public
+
+
+      #MLflow
+      MLFLOW_SERVER_PORT: http://mlflow_server:5001
+      MLFLOW_EXP_NAME: Training-patch-TST
+      MLFLOW_S3_ENDPOINT_URL: https://datalake-weather-castle.s3.eu-west-3.amazonaws.com
+
+
+      # Model parameters
+      MODEL_INFERENCE: patch-tst
+      FCST_HISTORY: 400
+      FCST_HORIZON: 24
+
+      #Data
+      URL_HISTORICAL: https://api.weatherstack.com/historical
+
+      #PostgreSQL_MLflow
+      MUID: 155
+      MGID: 155
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: mlflowdb
+      POSTGRES_USER: postgres
+      POSTGRES_HOST: mlflow_postgresql
+      POSTGRES_PASSWORD: 
+      PGDATA: /var/lib/postgresql/data/pgdata
+      BACKEND: postgresql://postgres:XXXXXXXX@mlflow_postgresql:5432/mlflowdb
+
+      #MySQL
+      MYSQL_ROOT_PASSWORD: root_pwd
+      MYSQL_DATABASE: wcm_db
+      DB_MYSQL_USER: root
+      DB_MYSQL_HOST: db_mysql
+
+      #AWS
+      AWS_ACCESS_KEY_ID: 
+      AWS_SECRET_ACCESS_KEY: 
+      AWS_DEFAULT_REGION: eu-west-3
+
+      TERM: xterm-256color
+
     ports:
       - "8000:8000"
     depends_on:
       - db_mysql
 
-  db:
+
+  mlflow_postgresql:
     restart: always
     image: postgres:13
-    container_name: mlflow_db
+    container_name: mlflow_postgresql
     expose:
         - 5432
     networks:
         - backend
-    env_file:
-      - ./postgres_secrets.env
-      - ./postgres.env
+    environment:
+      #PostgreSQL_MLflow
+      MUID: 155
+      MGID: 155
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: mlflowdb
+      POSTGRES_USER: postgres
+      POSTGRES_HOST: mlflow_postgresql
+      POSTGRES_PASSWORD: 
+      PGDATA: /var/lib/postgresql/data/pgdata
+      BACKEND: postgresql://postgres:XXXXXXXXX@mlflow_postgresql:5432/mlflowdb
+    
+    # command: >
+    #command: ["postgres", "-c", "hba_file=/etc/pg_hba.conf"]
     volumes:
-        - db_datapg:/var/lib/postgresql/data
-        - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+        - db_datapg_postresql_mlflow:/var/lib/postgresql/data/pgdata
+        - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
+        #- ${MLFLOW_PROJ_DIR}/postgres_mlfow/pg_hba.conf:/etc/pg_hba.conf
 
-  app:
+  mlflow_server:
     restart: always
     build:
-      context: ./mlflow
+      context: ${BACKEND_PROJ_DIR}/mlflow
     image: mlflow_server
     container_name: mlflow_server
     expose:
@@ -54,9 +147,31 @@ services:
     networks:
         - frontend
         - backend
-    env_file:
-        - ./app_secrets.env
-        - ./app.env
+    environment:
+      #PostgreSQL_MLflow
+      MUID: 155
+      MGID: 155
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: mlflowdb
+      POSTGRES_USER: postgres
+      POSTGRES_HOST: mlflow_postgresql
+      POSTGRES_PASSWORD: 
+      PGDATA: /var/lib/postgresql/data/pgdata
+      BACKEND: postgresql://postgres:XXXXXXXX@mlflow_postgresql:5432/mlflowdb
+
+      #MLFlow
+      HOST_MLFLOW_IP: 0.0.0.0
+      MLFLOW_PORT: 5001
+      NGINX_MLFLOW_PORT: 5000
+      MLFLOW_S3_URL: datalake-weather-castle.s3.eu-west-3.amazonaws.com
+      MLFLOW_S3_ENDPOINT_URL: https://datalake-weather-castle.s3.eu-west-3.amazonaws.com
+      ARTIFACTS: s3://datalake-weather-castle/mlflow/
+
+      #AWS
+      AWS_ACCESS_KEY_ID: 
+      AWS_SECRET_ACCESS_KEY: 
+      AWS_DEFAULT_REGION: eu-west-3
+
     volumes:
         - mlrun_data:/mlruns
     command: 
@@ -79,28 +194,290 @@ services:
             --serve-artifacts
 
     depends_on:
-        - db
+        - db_mysql
+        - mlflow_postgresql
 
   nginx:
-      restart: always
-      build: ./nginx
-      image: mlflow_nginx
-      container_name: mlflow_nginx
-      ports:
-          - 5000:80
-      networks:
-          - frontend
-      depends_on:
-          - app
+    restart: always
+    build: 
+      context: ${MLFLOW_PROJ_DIR}/nginx
+    image: mlflow_nginx
+    container_name: mlflow_nginx
+    ports:
+        - 5000:80
+    networks:
+        - frontend
+    depends_on:
+        - mlflow_server
 
-networks:
-  frontend:
-      driver: bridge
-  backend:
-      driver: bridge
 
-volumes:
-  db_datapg: {}
-  mlrun_data: {}
-  db_data: {}
+  airflow_postgresql:
+    image: postgres:13
+    container_name: airflow_postgresql
+    environment:
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: airflowdb
+      POSTGRES_USER: postgres
+      POSTGRES_HOST: airflow_postgresql
+      POSTGRES_PASSWORD: changethispasswordbis!
+      PGDATA: /var/lib/postgresql/data/pgdata
+      MUID: 156
+      MGID: 0
+    expose:
+        - 5432
+    volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - db_datapg_postresql_airflow:/var/lib/postgresql/data/pgdata
+        - db_logs_postresql_airflow:/var/lib/postgresql/data/log
+    command: >
+     postgres
+       -c listen_addresses=*
+       -c logging_collector=on
+       -c log_destination=stderr
+       -c max_connections=200
+    networks:
+        - airflow
+    restart: always
 
+
+  airflow_redis:
+    image: redis:5.0.5
+    container_name: airflow_redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+        - 6379:6379
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/redis-data:/data
+    networks:
+        - airflow
+    restart: always
+
+
+  airflow_webserver:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__CHECK_SLAS: 'false'
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: 'false'
+      AIRFLOW__CORE__PARALLELISM: 50
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CORE__FERNET_KEY: 
+      LOAD_EX: 'false'
+      AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
+    ports:
+        - 8080:8080
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
+    depends_on:
+        - airflow_postgresql
+        - airflow_redis
+        - airflow_initdb
+    command: webserver
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /opt/airflow/airflow-webserver.pid ]"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    networks:
+        - airflow
+
+
+  airflow_flower:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_flower
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__CHECK_SLAS: 'false'
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: 'false'
+      AIRFLOW__CORE__PARALLELISM: 50
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CORE__FERNET_KEY: 
+      LOAD_EX: 'false'
+      AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
+    ports:
+        - 5555:5555
+    depends_on:
+        - airflow_redis
+        - airflow_initdb
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 8s
+        max_attempts: 3
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+    command: celery flower
+    networks:
+        - airflow
+
+
+  airflow_scheduler:
+    #image: apache/airflow:2.5.0-python3.8
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__CHECK_SLAS: 'false'
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: 'false'
+      AIRFLOW__CORE__PARALLELISM: 50
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CORE__FERNET_KEY: 
+      LOAD_EX: 'false'
+      AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    command: scheduler
+    depends_on:
+        - airflow_initdb
+    deploy:
+      restart_policy:
+        condition: on-failure
+        window: 120s
+    restart: always
+    networks:
+        - airflow
+
+
+  airflow_worker_1:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_worker_1
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__CHECK_SLAS: 'false'
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: 'false'
+      AIRFLOW__CORE__PARALLELISM: 50
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CORE__FERNET_KEY: 
+      LOAD_EX: 'false'
+      AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    command: celery worker -H worker_1_name
+    depends_on:
+        - airflow_scheduler
+        - airflow_initdb
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 8s
+        max_attempts: 3
+    networks:
+        - airflow
+
+
+  airflow_worker_2:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_worker_2
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__CHECK_SLAS: 'false'
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: 'false'
+      AIRFLOW__CORE__PARALLELISM: 50
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CORE__FERNET_KEY: 
+      LOAD_EX: 'false'
+      AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    command: celery worker -H worker_2_name
+    depends_on:
+        - airflow_scheduler
+        - airflow_initdb
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    networks:
+        - airflow
+
+
+  airflow_initdb:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_initdb
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__WEBSERVER__RBAC: 'false'
+      AIRFLOW__CORE__CHECK_SLAS: 'false'
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: 'false'
+      AIRFLOW__CORE__PARALLELISM: 50
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__CORE__FERNET_KEY: 
+      LOAD_EX: 'false'
+      AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
+      AIRFLOW_LASTNAME: 'Admax'
+      AIRFLOW_FIRSTNAME: 'Admax'
+      AIRFLOW_USERNAME: 'Admax'
+      AIRFLOW_PWD: 'XXXXX'
+      AIRFLOW_EMAIL: 'fake@gmail.com'  
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    # entrypoint: /bin/bash
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 8s
+        max_attempts: 5
+    command: bash -c "airflow db init && airflow users create --firstname admin --lastname admin --email admin --password admin --username admin --role Admin"
+    depends_on:
+        - airflow_redis
+        - airflow_postgresql
+    networks:
+        - airflow

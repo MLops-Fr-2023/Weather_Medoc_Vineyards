@@ -1,5 +1,7 @@
 #!/bin/bash
 
+docker-compose down
+
 docker stop $(docker ps -aq)
 docker rm $(docker ps -aq)
 
@@ -10,3 +12,4 @@ docker builder prune --force
 
 sudo docker-compose build --no-cache
 sudo docker-compose up
+

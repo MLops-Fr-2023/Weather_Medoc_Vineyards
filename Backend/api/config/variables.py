@@ -65,10 +65,10 @@ class DbInfo():
             self.db_warehouse = config['WAREHOUSE_SNOWFLAKE']
             self.db_schema = config['SCHEMA_SNOWFLAKE']
         elif self.db_env == DbType.mysql.value:
-            self.db_host  = config['DB_MYSQL_HOST']
-            self.db_name  = config['DB_MYSQL_DBNAME']
+            self.db_host  = os.environ.get('DB_MYSQL_HOST')
+            self.db_name  = os.environ.get('MYSQL_DATABASE')
             self.db_user  = os.environ.get('DB_MYSQL_USER')
-            self.db_pwd   = os.environ.get('DB_MYSQL_USR_PWD')
+            self.db_pwd   = os.environ.get('MYSQL_ROOT_PASSWORD')
 
 class UrlData():
     def __init__(self, config=config):

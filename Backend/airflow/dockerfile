@@ -1,0 +1,19 @@
+FROM apache/airflow:latest
+
+WORKDIR '/home/ubuntu/Weather_Chateau_Margaux/Backend/airflow'
+
+USER root
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y apt-utils && \
+    apt-get install -y git && \
+    apt-get install -y vim libpq-dev
+
+USER airflow
+
+RUN pip install --upgrade pip
+RUN pip install --user psycopg2-binary
+RUN pip install --user 'pyarrow<10.1.0,>=10.0.1'
+
+COPY ./dags /usr/local/airflow/dags
