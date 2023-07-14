@@ -11,3 +11,4 @@
 /Backend/airflow/logs/**
 /Backend/airflow/redis-data/**
 /Backend/airflow/database/**
+/Backend/.env.uid
