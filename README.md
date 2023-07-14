@@ -6,7 +6,7 @@ An application to help owners of vineyards in Margaux mitigate the effects of cl
 #### Optionnal full clean
 From the folder *Backend* launch
 
-`$ bash run_docker_compose.sh`
+`$ bash clean_docker.sh`
 
 #### Launch
 From the folder *Backend* launch
