@@ -5,4 +5,5 @@ RUN rm /etc/nginx/nginx.conf
 COPY nginx.conf /etc/nginx
 COPY .htpasswd /etc/nginx
 # Copy proxy config
-COPY mlflow.conf /etc/nginx/sites-enabled/
+COPY service1.conf /etc/nginx/sites-enabled/
+COPY service2.conf /etc/nginx/sites-enabled/
