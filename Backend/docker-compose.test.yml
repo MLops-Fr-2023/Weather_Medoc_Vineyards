@@ -6,8 +6,6 @@ services:
     container_name: pytest
     networks:
       - backend
-    env_file:
-      - ./api_secrets.env
     command: ["pytest", "-v"]
 
 networks:

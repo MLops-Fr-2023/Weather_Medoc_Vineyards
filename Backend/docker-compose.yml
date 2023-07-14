@@ -88,7 +88,7 @@ services:
       POSTGRES_HOST: mlflow_postgresql
       POSTGRES_PASSWORD: 
       PGDATA: /var/lib/postgresql/data/pgdata
-      BACKEND: postgresql://postgres:XXXXXXXX@mlflow_postgresql:5432/mlflowdb
+      BACKEND: 
 
       #MySQL
       MYSQL_ROOT_PASSWORD: root_pwd
@@ -127,7 +127,7 @@ services:
       POSTGRES_HOST: mlflow_postgresql
       POSTGRES_PASSWORD: 
       PGDATA: /var/lib/postgresql/data/pgdata
-      BACKEND: postgresql://postgres:XXXXXXXXX@mlflow_postgresql:5432/mlflowdb
+      BACKEND: 
     
     # command: >
     #command: ["postgres", "-c", "hba_file=/etc/pg_hba.conf"]
@@ -157,7 +157,7 @@ services:
       POSTGRES_HOST: mlflow_postgresql
       POSTGRES_PASSWORD: 
       PGDATA: /var/lib/postgresql/data/pgdata
-      BACKEND: postgresql://postgres:XXXXXXXX@mlflow_postgresql:5432/mlflowdb
+      BACKEND: 
 
       #MLFlow
       HOST_MLFLOW_IP: 0.0.0.0
@@ -219,7 +219,7 @@ services:
       POSTGRES_DB: airflowdb
       POSTGRES_USER: postgres
       POSTGRES_HOST: airflow_postgresql
-      POSTGRES_PASSWORD: changethispasswordbis!
+      POSTGRES_PASSWORD: 
       PGDATA: /var/lib/postgresql/data/pgdata
       MUID: 156
       MGID: 0
@@ -268,8 +268,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
       AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 
+      AIRFLOW__CELERY__RESULT_BACKEND: 
       AIRFLOW__CORE__FERNET_KEY: 
       LOAD_EX: 'false'
       AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
@@ -312,8 +312,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
       AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXXX@airflow_postgresql:5432/airflowdb
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 
+      AIRFLOW__CELERY__RESULT_BACKEND: 
       AIRFLOW__CORE__FERNET_KEY: 
       LOAD_EX: 'false'
       AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
@@ -348,8 +348,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
       AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 
+      AIRFLOW__CELERY__RESULT_BACKEND: 
       AIRFLOW__CORE__FERNET_KEY: 
       LOAD_EX: 'false'
       AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
@@ -383,8 +383,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
       AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 
+      AIRFLOW__CELERY__RESULT_BACKEND: 
       AIRFLOW__CORE__FERNET_KEY: 
       LOAD_EX: 'false'
       AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
@@ -419,8 +419,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
       AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 
+      AIRFLOW__CELERY__RESULT_BACKEND: 
       AIRFLOW__CORE__FERNET_KEY: 
       LOAD_EX: 'false'
       AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0
@@ -454,8 +454,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: 'false'
       AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: 10
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres:XXXXXXXXX@airflow_postgresql:5432/airflowdb
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://postgres:XXXXXXXX@airflow_postgresql:5432/airflowdb
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: 
+      AIRFLOW__CELERY__RESULT_BACKEND: 
       AIRFLOW__CORE__FERNET_KEY: 
       LOAD_EX: 'false'
       AIRFLOW__CELERY__BROKER_URL: redis://:@airflow_redis:6379/0

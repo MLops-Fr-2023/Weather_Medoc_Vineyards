@@ -20,3 +20,4 @@ scikit-learn==1.2.2
 imbalanced-learn==0.10.1
 gdown==4.7.1
 boto3==1.26.164
+httpx
