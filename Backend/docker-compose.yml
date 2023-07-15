@@ -60,8 +60,8 @@ services:
       FCST_HISTORY: ${FCST_HISTORY}
       FCST_HORIZON: ${FCST_HORIZON}
       URL_HISTORICAL: ${URL_HISTORICAL}
-      MUID: ${MUID}
-      MGID: ${MGID}
+      MLFLOW_MUID: ${MLFLOW_MUID}
+      MLFLOW_MGID: ${MLFLOW_MGID}
       POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -93,8 +93,8 @@ services:
         - 5432
     environment:
       #PostgreSQL_MLflow
-      MUID: ${MUID}
-      MGID: ${MGID}
+      MLFLOW_MUID: ${MLFLOW_MUID}
+      MLFLOW_MGID: ${MLFLOW_MGID}
       POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -117,8 +117,8 @@ services:
     expose:
         - 5001
     environment:
-      MUID: ${MUID}
-      MGID: ${MGID}
+      MLFLOW_MUID: ${MLFLOW_MUID}
+      MLFLOW_MGID: ${MLFLOW_MGID}
       POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -183,8 +183,8 @@ services:
       POSTGRES_HOST: ${POSTGRES_HOST}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: ${PGDATA}
-      MUID: ${MUID}
-      MGID: ${MGID}
+      AIRFLOW_MUID: ${AIRFLOW_MUID}
+      AIRFLOW_MGID: ${AIRFLOW_MGID}
     expose:
         - 5432
     volumes:
