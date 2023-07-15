@@ -443,7 +443,8 @@ services:
         - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
         - /var/run/docker.sock:/var/run/docker.sock
     # entrypoint: /bin/bash
-    command: bash -c 'airflow db init && airflow users create --firstname admin --lastname admin --email admin --password admin --username admin --role Admin'
+    command: 
+      bash -c "airflow db init && airflow users create --firstname ${AIRFLOW_FIRSTNAME} --lastname ${AIRFLOW_LASTNAME} --email ${AIRFLOW_EMAIL} --password ${AIRFLOW_PWD} --username ${AIRFLOW_USERNAME} --role Admin"
     depends_on:
         - airflow_redis
         - airflow_postgresql
