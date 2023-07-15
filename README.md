@@ -1,4 +1,4 @@
-# Weather_Chateau_Margaux
+# Weather_Medoc_Vineyards
 An application to help owners of vineyards in Margaux mitigate the effects of climate risks
 
 ### Launch the services
