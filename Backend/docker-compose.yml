@@ -277,12 +277,12 @@ services:
         - backend
         - frontend
 
-  nginx:
+  nginx_proxy:
     restart: always
     build: 
       context: ${BACKEND_PROJ_DIR}/nginx_proxy
-    image: mlflow_nginx
-    container_name: mlflow_nginx
+    image: nginx_proxy
+    container_name: nginx_proxy
     ports:
         - 9000:9000
         - 9001:9001
