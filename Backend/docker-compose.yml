@@ -60,15 +60,15 @@ services:
       FCST_HISTORY: ${FCST_HISTORY}
       FCST_HORIZON: ${FCST_HORIZON}
       URL_HISTORICAL: ${URL_HISTORICAL}
-      MLFLOW_MUID: ${MLFLOW_MUID}
-      MLFLOW_MGID: ${MLFLOW_MGID}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATA: ${PGDATA}
-      BACKEND: ${BACKEND}
+      MUID: ${MLFLOW_MUID}
+      MGID: ${MLFLOW_MGID}
+      POSTGRES_PORT: ${MLFLOW_POSTGRES_PORT}
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB}
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
+      POSTGRES_HOST: ${MLFLOW_POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD}
+      PGDATA: ${MLFLOW_PGDATA}
+      BACKEND: ${MLFLOW_BACKEND}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       DB_MYSQL_USER: ${DB_MYSQL_USER}
@@ -95,13 +95,13 @@ services:
       #PostgreSQL_MLflow
       MLFLOW_MUID: ${MLFLOW_MUID}
       MLFLOW_MGID: ${MLFLOW_MGID}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} 
-      PGDATA: ${PGDATA}
-      BACKEND: ${BACKEND}
+      POSTGRES_PORT: ${MLFLOW_POSTGRES_PORT}
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB}
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
+      POSTGRES_HOST: ${MLFLOW_POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD} 
+      PGDATA: ${MLFLOW_PGDATA}
+      BACKEND: ${MLFLOW_BACKEND}
     volumes:
         - db_datapg_postresql_mlflow:/var/lib/postgresql/data/pgdata
         - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
@@ -119,13 +119,13 @@ services:
     environment:
       MLFLOW_MUID: ${MLFLOW_MUID}
       MLFLOW_MGID: ${MLFLOW_MGID}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATA: ${PGDATA}
-      BACKEND: ${BACKEND}
+      POSTGRES_PORT: ${MLFLOW_POSTGRES_PORT}
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB}
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
+      POSTGRES_HOST: ${MLFLOW_POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD}
+      PGDATA: ${MLFLOW_PGDATA}
+      BACKEND: ${MLFLOW_BACKEND}
       HOST_MLFLOW_IP: ${HOST_MLFLOW_IP}
       MLFLOW_PORT: ${MLFLOW_PORT}
       NGINX_MLFLOW_PORT: ${NGINX_MLFLOW_PORT}
@@ -143,8 +143,8 @@ services:
         - mlflow server
             --port $${MLFLOW_PORT}
             --host $${HOST_MLFLOW_IP}
-            --backend-store-uri $${BACKEND} 
-            --default-artifact-root $${ARTIFACTS}Ò
+            --backend-store-uri $${MLFLOW_BACKEND} 
+            --default-artifact-root $${MLFLOW_ARTIFACTS}
             --serve-artifacts
     networks:
         - frontend
@@ -154,35 +154,17 @@ services:
         - db_mysql
         - mlflow_postgresql
 
-  nginx:
-    restart: always
-    build: 
-      context: ${BACKEND_PROJ_DIR}/nginx_proxy
-    image: mlflow_nginx
-    container_name: mlflow_nginx
-    ports:
-        - 9000:9000
-        - 9001:9001
-        - 9002:9002
-    networks:
-        - frontend
-    depends_on:
-        - mlflow_server
-        - airflow_flower
-
   airflow_postgresql:
     image: postgres:13
     container_name: airflow_postgresql
-    env_file:
-      - .env.uid
-    user: ${AIRFLOW_UID}:0
+    user: ${AIRFLOW_UID}:${AIRFLOW_GID}
     environment:
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      PGDATA: ${PGDATA}
+      POSTGRES_PORT: ${AIRFLOW_POSTGRES_PORT}
+      POSTGRES_DB: ${AIRFLOW_POSTGRES_DB}
+      POSTGRES_USER: ${AIRFLOW_POSTGRES_USER}
+      POSTGRES_HOST: ${AIRFLOW_POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${AIRFLOW_POSTGRES_PASSWORD}
+      PGDATA: ${AIRFLOW_PGDATA}
       AIRFLOW_MUID: ${AIRFLOW_MUID}
       AIRFLOW_MGID: ${AIRFLOW_MGID}
     expose:
@@ -204,9 +186,7 @@ services:
   airflow_redis:
     image: redis:5.0.5
     container_name: airflow_redis
-    env_file:
-      - .env.uid
-    user: ${AIRFLOW_UID}:0
+    user: ${AIRFLOW_UID}:${AIRFLOW_GID}
     environment:
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
@@ -223,13 +203,204 @@ services:
         - airflow
     restart: always
 
+  airflow_initdb:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_initdb
+    user: ${AIRFLOW_UID}:${AIRFLOW_GID}
+    environment:
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
+      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
+      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      LOAD_EX: ${LOAD_EX}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW_LASTNAME: ${AIRFLOW_LASTNAME}
+      AIRFLOW_FIRSTNAME: ${AIRFLOW_FIRSTNAME}
+      AIRFLOW_USERNAME: ${AIRFLOW_USERNAME}
+      AIRFLOW_PWD: ${AIRFLOW_PWD}
+      AIRFLOW_EMAIL: ${AIRFLOW_EMAIL}
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    # entrypoint: /bin/bash
+    command: 
+      bash -c "airflow db init && airflow users create --firstname ${AIRFLOW_FIRSTNAME} --lastname ${AIRFLOW_LASTNAME} --email ${AIRFLOW_EMAIL} --password ${AIRFLOW_PWD} --username ${AIRFLOW_USERNAME} --role Admin"
+    depends_on:
+        - airflow_redis
+        - airflow_postgresql
+    networks:
+        - airflow
+
+  airflow_flower:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_flower
+    env_file:
+      - .env.uid
+    user: ${AIRFLOW_UID}:${AIRFLOW_GID}
+    environment:
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
+      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
+      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      LOAD_EX: ${LOAD_EX}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      AIRFLOW_USERNAME: ${AIRFLOW_USERNAME}
+      AIRFLOW_PWD: ${AIRFLOW_PWD}
+    ports:
+        - 5555:5555
+    depends_on:
+        - airflow_redis
+        - airflow_initdb
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+    command: celery flower
+    networks:
+        - airflow
+        - backend
+        - frontend
+
+  nginx:
+    restart: always
+    build: 
+      context: ${BACKEND_PROJ_DIR}/nginx_proxy
+    image: mlflow_nginx
+    container_name: mlflow_nginx
+    ports:
+        - 9000:9000
+        - 9001:9001
+        - 9002:9002
+    networks:
+        - frontend
+    depends_on:
+        - mlflow_server
+        - airflow_flower
+
+  airflow_scheduler:
+    #image: apache/airflow:2.5.0-python3.8
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_scheduler
+    user: ${AIRFLOW_UID}:${AIRFLOW_GID}
+    environment:
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
+      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
+      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      LOAD_EX: ${LOAD_EX}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    command: scheduler
+    depends_on:
+        - airflow_initdb
+    restart: always
+    networks:
+        - airflow
+        - backend
+
+  airflow_worker_1:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_worker_1
+    user: ${AIRFLOW_UID}:${AIRFLOW_GID}
+    environment:
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
+      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
+      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      LOAD_EX: ${LOAD_EX}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    command: celery worker -H worker_1_name
+    depends_on:
+        - airflow_scheduler
+        - airflow_initdb
+    networks:
+        - airflow
+        - backend
+
+  airflow_worker_2:
+    build:
+      context: ${AIRFLOW_PROJ_DIR}
+    container_name: airflow_worker_2
+    user: ${AIRFLOW_UID}:${AIRFLOW_GID}
+    environment:
+      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
+      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
+      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
+      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
+      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
+      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
+      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      LOAD_EX: ${LOAD_EX}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+    volumes:
+        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - /var/run/docker.sock:/var/run/docker.sock
+    command: celery worker -H worker_2_name
+    depends_on:
+        - airflow_scheduler
+        - airflow_initdb
+
+    networks:
+        - airflow
+        - backend
+
   airflow_webserver:
     build:
       context: ${AIRFLOW_PROJ_DIR}
     container_name: airflow_webserver
-    env_file:
-      - .env.uid
-    user: ${AIRFLOW_UID}:0
+    user: ${AIRFLOW_UID}:${AIRFLOW_GID}
     environment:
       AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
       AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
@@ -265,188 +436,3 @@ services:
     networks:
         - airflow
         - frontend
-
-  airflow_flower:
-    build:
-      context: ${AIRFLOW_PROJ_DIR}
-    container_name: airflow_flower
-    env_file:
-      - .env.uid
-    user: ${AIRFLOW_UID}:0
-    environment:
-      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
-      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
-      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
-      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
-      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
-      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
-      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
-      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
-      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
-      LOAD_EX: ${LOAD_EX}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
-      AIRFLOW_USERNAME: ${AIRFLOW_USERNAME}
-      AIRFLOW_PWD: ${AIRFLOW_PWD}
-    ports:
-        - 5555:5555
-    depends_on:
-        - airflow_redis
-        - airflow_initdb
-    volumes:
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-    command: celery flower
-    networks:
-        - airflow
-        - backend
-        - frontend
-
-  airflow_scheduler:
-    #image: apache/airflow:2.5.0-python3.8
-    build:
-      context: ${AIRFLOW_PROJ_DIR}
-    container_name: airflow_scheduler
-    env_file:
-      - .env.uid
-    user: ${AIRFLOW_UID}:0
-    environment:
-      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
-      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
-      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
-      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
-      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
-      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
-      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
-      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
-      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
-      LOAD_EX: ${LOAD_EX}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
-    volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
-    command: scheduler
-    depends_on:
-        - airflow_initdb
-    restart: always
-    networks:
-        - airflow
-        - backend
-
-  airflow_worker_1:
-    build:
-      context: ${AIRFLOW_PROJ_DIR}
-    container_name: airflow_worker_1
-    env_file:
-      - .env.uid
-    user: ${AIRFLOW_UID}:0
-    environment:
-      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
-      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
-      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
-      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
-      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
-      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
-      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
-      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
-      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
-      LOAD_EX: ${LOAD_EX}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
-    volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
-    command: celery worker -H worker_1_name
-    depends_on:
-        - airflow_scheduler
-        - airflow_initdb
-    networks:
-        - airflow
-        - backend
-
-  airflow_worker_2:
-    build:
-      context: ${AIRFLOW_PROJ_DIR}
-    container_name: airflow_worker_2
-    env_file:
-      - .env.uid
-    user: ${AIRFLOW_UID}:0
-    environment:
-      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
-      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
-      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
-      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
-      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
-      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
-      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
-      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
-      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
-      LOAD_EX: ${LOAD_EX}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
-    volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
-    command: celery worker -H worker_2_name
-    depends_on:
-        - airflow_scheduler
-        - airflow_initdb
-
-    networks:
-        - airflow
-        - backend
-
-  airflow_initdb:
-    build:
-      context: ${AIRFLOW_PROJ_DIR}
-    container_name: airflow_initdb
-    env_file:
-      - .env.uid
-    user: ${AIRFLOW_UID}:0
-    environment:
-      AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
-      AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
-      AIRFLOW__CORE__CHECK_SLAS: ${AIRFLOW__CORE__CHECK_SLAS}
-      AIRFLOW__CORE__STORE_SERIALIZED_DAGS: ${AIRFLOW__CORE__STORE_SERIALIZED_DAGS}
-      AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM}
-      AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
-      AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS: ${AIRFLOW__CORE__LOAD_DEFAULT_CONNECTIONS}
-      AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC: ${AIRFLOW__SCHEDULER__SCHEDULER_HEARTBEAT_SEC}
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
-      AIRFLOW__CELERY__RESULT_BACKEND: ${AIRFLOW__CELERY__RESULT_BACKEND}
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
-      LOAD_EX: ${LOAD_EX}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
-      AIRFLOW_LASTNAME: ${AIRFLOW_LASTNAME}
-      AIRFLOW_FIRSTNAME: ${AIRFLOW_FIRSTNAME}
-      AIRFLOW_USERNAME: ${AIRFLOW_USERNAME}
-      AIRFLOW_PWD: ${AIRFLOW_PWD}
-      AIRFLOW_EMAIL: ${AIRFLOW_EMAIL}
-    volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
-    # entrypoint: /bin/bash
-    command: 
-      bash -c "airflow db init && airflow users create --firstname ${AIRFLOW_FIRSTNAME} --lastname ${AIRFLOW_LASTNAME} --email ${AIRFLOW_EMAIL} --password ${AIRFLOW_PWD} --username ${AIRFLOW_USERNAME} --role Admin"
-    depends_on:
-        - airflow_redis
-        - airflow_postgresql
-    networks:
-        - airflow
