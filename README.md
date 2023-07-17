@@ -26,3 +26,29 @@ All the ressources would be accesssible through their exposed ports (5555, 8080,
 #### If service in differents VM, separated on differents subnets (private/public)
 For le final architecture, service would be accessible from outside the VPC through the Nginx Proxy on 9001, 9002, 9003
 
+### Quick manual setup on a new AWS VM (t3.large)
+```
+# AWS VL from scratch
+sudo apt-get update && sudo apt-get upgrade 
+sudo apt install docker-compose
+
+# prepare for docker 
+sudo usermod -aG docker $USER
+# sudo groupadd docker
+newgrp docker
+
+# generate RSA key
+ssh-keygen -t rsa -b 4096 -C "myaccountemail@gmail.com"
+cat /home/ubuntu/.ssh/id_rsa.pub
+# create key in personal github account
+
+# clone repo
+git clone git@github.com:MLops-Fr-2023/Weather_Medoc_Vineyards.git
+cd Weather_Medoc_Vineyards/
+git checkout develop
+
+# run services
+cd Backend
+./run_docker_compose.sh
+```
+
