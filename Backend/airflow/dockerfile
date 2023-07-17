@@ -1,6 +1,6 @@
 FROM apache/airflow:latest
 
-WORKDIR '/home/ubuntu/Weather_Chateau_Margaux/Backend/airflow'
+WORKDIR '/home/ubuntu/Weather_Medoc_Vineyards/Backend/airflow'
 
 USER root
 
