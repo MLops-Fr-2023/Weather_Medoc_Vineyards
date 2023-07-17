@@ -246,8 +246,6 @@ services:
     build:
       context: ${AIRFLOW_PROJ_DIR}
     container_name: airflow_flower
-    env_file:
-      - .env.uid
     user: ${AIRFLOW_UID}:${AIRFLOW_GID}
     environment:
       AIRFLOW__CORE__EXECUTOR: ${AIRFLOW__CORE__EXECUTOR}
