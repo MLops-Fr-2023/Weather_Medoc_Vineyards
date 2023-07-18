@@ -1,0 +1,30 @@
+version: '3.9'
+
+networks:
+  frontend:
+    driver: bridge
+  outside:
+    external: true
+
+services:
+
+  streamlit:
+    restart: always
+    build: 
+      context: ${FRONTEND_PROJ_DIR}/streamlit
+    container_name: streamlit
+    ports:
+      - 8501:8501
+    networks:
+      - frontend
+      - outside
+
+    environment:
+      API_BASE_URL: ${API_BASE_URL}
+      FORECAST_CITY: ${FORECAST_CITY}
+      ALLOWED_CITIES: ${ALLOWED_CITIES}
+      IMAGE_PATH_TEAM: ${IMAGE_PATH_TEAM}
+      IMAGE_PATH_GIF: ${IMAGE_PATH_GIF}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
