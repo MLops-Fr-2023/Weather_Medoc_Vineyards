@@ -261,8 +261,8 @@ services:
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       AIRFLOW_USERNAME: ${AIRFLOW_USERNAME}
       AIRFLOW_PWD: ${AIRFLOW_PWD}    
-    expose:
-        - 5555
+    ports:
+        - 5555:5555
     depends_on:
         - airflow_redis
         - airflow_initdb
