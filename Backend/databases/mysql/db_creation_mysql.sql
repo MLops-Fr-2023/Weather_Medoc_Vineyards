@@ -69,8 +69,8 @@ VALUES
 ('admax', 'user_management'),
 ('admax', 'training'),
 ('backend', 'training'),
-('backend', 'get_data'),
-('test', 'forecast');
+('backend', 'get_data');
+
 
 INSERT INTO CITIES (CITY)
 VALUES
@@ -80,4 +80,4 @@ VALUES
 ('Castelnau-de-Medoc'),
 ('Lamarque, FR'),
 ('Ludon-Medoc'),
-('Arsac')
+('Arsac');
