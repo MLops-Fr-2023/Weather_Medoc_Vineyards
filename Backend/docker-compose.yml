@@ -31,11 +31,19 @@ services:
       - db_data_mysql:/var/lib/mysql   
     networks:
       - backend
+    ports:
+      - 3306:3306
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       DB_MYSQL_USER: ${DB_MYSQL_USER}
       DB_MYSQL_HOST: ${DB_MYSQL_HOST}
+    healthcheck:
+      test: mysqladmin ping -h localhost -u $$DB_MYSQL_USER --password=$$MYSQL_PASSWORD
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 55
     
   api:
     restart: always
@@ -56,15 +64,6 @@ services:
       FCST_HISTORY: ${FCST_HISTORY}
       FCST_HORIZON: ${FCST_HORIZON}
       URL_HISTORICAL: ${URL_HISTORICAL}
-      MUID: ${MLFLOW_MUID}
-      MGID: ${MLFLOW_MGID}
-      POSTGRES_PORT: ${MLFLOW_POSTGRES_PORT}
-      POSTGRES_DB: ${MLFLOW_POSTGRES_DB}
-      POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
-      POSTGRES_HOST: ${MLFLOW_POSTGRES_HOST}
-      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD}
-      PGDATA: ${MLFLOW_PGDATA}
-      BACKEND: ${MLFLOW_BACKEND}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       DB_MYSQL_USER: ${DB_MYSQL_USER}
@@ -73,10 +72,15 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       TERM: ${TERM}
+      BUCKET_NAME: ${BUCKET_NAME}
+      MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}
+      PATH_ARTIFACT_INFERENCE: ${PATH_ARTIFACT_INFERENCE}
+      S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}   
     ports:
       - 8000:8000
     depends_on:
-      - db_mysql
+      db_mysql:
+        condition: service_healthy
     networks:
         - outside
         - backend
@@ -104,6 +108,9 @@ services:
         - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
     networks:
         - mlflow
+    depends_on:
+      db_mysql:
+        condition: service_healthy
 
   mlflow_server:
     restart: always
@@ -125,8 +132,7 @@ services:
       MLFLOW_BACKEND: ${MLFLOW_BACKEND}
       HOST_MLFLOW_IP: ${HOST_MLFLOW_IP}
       MLFLOW_PORT: ${MLFLOW_PORT}
-      NGINX_MLFLOW_PORT: ${NGINX_MLFLOW_PORT}
-      #MLFLOW_S3_URL: ${MLFLOW_S3_URL}
+      #NGINX_MLFLOW_PORT: ${NGINX_MLFLOW_PORT}
       MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
       MLFLOW_ARTIFACTS: ${MLFLOW_ARTIFACTS}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -148,8 +154,8 @@ services:
         - mlflow
         - backend
     depends_on:
-        - db_mysql
-        - mlflow_postgresql
+      db_mysql:
+        condition: service_healthy
 
   airflow_postgresql:
     image: postgres:13
@@ -283,6 +289,7 @@ services:
     ports:
         - 9000:9000
         - 9001:9001
+        - 9002:9002
     networks:
         - proxy
     depends_on:
@@ -430,3 +437,4 @@ services:
     networks:
         - airflow
         - proxy
+

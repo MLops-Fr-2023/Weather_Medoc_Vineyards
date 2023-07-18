@@ -31,7 +31,7 @@ div.stButton > button:hover {
 ########## VARIABLES #########
 
 fs = s3fs.S3FileSystem(anon=False)
-image_path_team = os.environ.get("IMAGE_PATH_TEAM")
+image_path_images = os.environ.get("IMAGE_PATH_IMAGES")
 
 API_BASE_URL = os.environ.get('API_BASE_URL')
 FORECAST_ENDPOINT = os.environ.get('FORECAST_CITY')
@@ -162,8 +162,8 @@ with st.sidebar:
     with st.expander("Joffrey Lemery"):
         col1, col2, col3 = st.columns([1,0.5,1])  
         with col1: 
-            st.image(read_image_bucket( image_path_team + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
-            st.image(read_image_bucket( image_path_team + 'github_blank.png'),channels="RGB", output_format="auto")
+            st.image(read_image_bucket( image_path_images + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
+            st.image(read_image_bucket( image_path_images + 'github_blank.png'),channels="RGB", output_format="auto")
         with col3:
             st.write("")
             st.write("")
@@ -178,8 +178,8 @@ with st.sidebar:
     with st.expander("Nicolas Carayon"):
         col1, col2, col3 = st.columns([1,0.5,1])  
         with col1: 
-            st.image(read_image_bucket( image_path_team + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
-            st.image(read_image_bucket( image_path_team + 'github_blank.png'),channels="RGB", output_format="auto")
+            st.image(read_image_bucket( image_path_images + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
+            st.image(read_image_bucket( image_path_images + 'github_blank.png'),channels="RGB", output_format="auto")
         with col3:
             st.write("")
             st.write("")
@@ -193,8 +193,8 @@ with st.sidebar:
     with st.expander("Jacques Douvroy"):
         col1, col2, col3 = st.columns([1,0.5,1])  
         with col1: 
-            st.image(read_image_bucket( image_path_team + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
-            st.image(read_image_bucket( image_path_team + 'github_blank.png'),channels="RGB", output_format="auto")
+            st.image(read_image_bucket( image_path_images + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
+            st.image(read_image_bucket( image_path_images + 'github_blank.png'),channels="RGB", output_format="auto")
         with col3:            
             st.write("")
             st.write("")
