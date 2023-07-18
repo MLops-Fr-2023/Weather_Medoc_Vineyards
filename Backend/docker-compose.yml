@@ -111,8 +111,8 @@ services:
       context: ${BACKEND_PROJ_DIR}/mlflow
     image: mlflow_server
     container_name: mlflow_server
-    ports:
-        - 5001:5001
+    expose:
+        - 5001
     environment:
       MLFLOW_MUID: ${MLFLOW_MUID}
       MLFLOW_MGID: ${MLFLOW_MGID}
