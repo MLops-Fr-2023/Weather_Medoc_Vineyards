@@ -1,14 +1,16 @@
 version: '3.9'
 
 networks:
-  frontend:
-      driver: bridge
+  outside:
+    external: true
+  proxy:
+    driver: bridge
   backend:
-      driver: bridge
+    driver: bridge
   airflow:
-      driver: bridge
+    driver: bridge
   mlflow:
-      driver: bridge
+    driver: bridge
 
 volumes:
   db_datapg_postresql_mlflow: 
@@ -47,15 +49,9 @@ services:
       DB_ENV: ${DB_ENV}
       FILE_ID: ${FILE_ID}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
-      BUCKET_NAME: ${BUCKET_NAME}
-      S3_URI: ${S3_URI}
-      S3_PREFIX: ${S3_PREFIX}
-      MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
       WAREHOUSE_SNOWFLAKE: ${WAREHOUSE_SNOWFLAKE}
       DB_SNOWFLAKE: ${DB_SNOWFLAKE}
       SCHEMA_SNOWFLAKE: ${SCHEMA_SNOWFLAKE}
-      MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}
-      MLFLOW_EXP_NAME: ${MLFLOW_EXP_NAME}
       MODEL_INFERENCE: ${MODEL_INFERENCE}
       FCST_HISTORY: ${FCST_HISTORY}
       FCST_HORIZON: ${FCST_HORIZON}
@@ -78,10 +74,11 @@ services:
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       TERM: ${TERM}
     ports:
-      - "8000:8000"
+      - 8000:8000
     depends_on:
       - db_mysql
     networks:
+        - outside
         - backend
         - mlflow
 
@@ -125,13 +122,13 @@ services:
       POSTGRES_HOST: ${MLFLOW_POSTGRES_HOST}
       POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD}
       PGDATA: ${MLFLOW_PGDATA}
-      BACKEND: ${MLFLOW_BACKEND}
+      MLFLOW_BACKEND: ${MLFLOW_BACKEND}
       HOST_MLFLOW_IP: ${HOST_MLFLOW_IP}
       MLFLOW_PORT: ${MLFLOW_PORT}
       NGINX_MLFLOW_PORT: ${NGINX_MLFLOW_PORT}
-      MLFLOW_S3_URL: ${MLFLOW_S3_URL}
+      #MLFLOW_S3_URL: ${MLFLOW_S3_URL}
       MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
-      ARTIFACTS: ${MLFLOW_ARTIFACTS}
+      MLFLOW_ARTIFACTS: ${MLFLOW_ARTIFACTS}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
@@ -147,7 +144,7 @@ services:
             --default-artifact-root $${MLFLOW_ARTIFACTS}
             --serve-artifacts
     networks:
-        - frontend
+        - proxy
         - mlflow
         - backend
     depends_on:
@@ -275,7 +272,7 @@ services:
     networks:
         - airflow
         - backend
-        - frontend
+        - proxy
 
   nginx_proxy:
     restart: always
@@ -286,9 +283,8 @@ services:
     ports:
         - 9000:9000
         - 9001:9001
-        - 9002:9002
     networks:
-        - frontend
+        - proxy
     depends_on:
         - mlflow_server
         - airflow_flower
@@ -433,4 +429,4 @@ services:
       retries: 5
     networks:
         - airflow
-        - frontend
+        - proxy

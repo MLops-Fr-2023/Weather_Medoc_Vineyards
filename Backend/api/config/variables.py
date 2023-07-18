@@ -14,8 +14,6 @@ class S3Access():
 class S3VarAccess():
     def __init__(self, config=config):
         self.bucket_name = config['BUCKET_NAME']
-        self.s3_uri = config['S3_URI']
-        self.s3_prefix = config['S3_PREFIX']
 
 class S3LogHandler(logging.StreamHandler):
     def __init__(self, bucket_name, log_path):
@@ -51,8 +49,6 @@ class VarEnvInferenceModel():
 class VarEnvMLflow():
     def __init__(self, config=config):
         self.mlflow_server_port = config['MLFLOW_SERVER_PORT']
-        self.mlflow_exp_name = config['MLFLOW_EXP_NAME']
-        self.mlflow_s3_endpoint_url = config['MLFLOW_S3_ENDPOINT_URL']
 
 class DbInfo():
     def __init__(self, config=config):
