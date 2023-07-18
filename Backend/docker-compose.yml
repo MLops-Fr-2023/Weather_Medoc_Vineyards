@@ -28,7 +28,7 @@ services:
       context: ${BACKEND_PROJ_DIR}/databases
     container_name: db_mysql
     volumes:
-      - db_data_mysql:/var/lib/mysql
+      - db_data_mysql:/var/lib/mysql   
     networks:
       - backend
     environment:
@@ -112,7 +112,7 @@ services:
     image: mlflow_server
     container_name: mlflow_server
     expose:
-        - 5001
+        - 5001:5001
     environment:
       MLFLOW_MUID: ${MLFLOW_MUID}
       MLFLOW_MGID: ${MLFLOW_MGID}
@@ -260,9 +260,9 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       AIRFLOW_USERNAME: ${AIRFLOW_USERNAME}
-      AIRFLOW_PWD: ${AIRFLOW_PWD}
-    ports:
-        - 5555:5555
+      AIRFLOW_PWD: ${AIRFLOW_PWD}    
+    expose:
+        - 5555
     depends_on:
         - airflow_redis
         - airflow_initdb
