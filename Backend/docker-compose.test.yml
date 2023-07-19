@@ -8,11 +8,14 @@ networks:
   mlflow:
     driver: bridge
 
+
 volumes:
   db_datapg_postresql_mlflow: 
   db_logs_postresql_mlflow: 
   mlrun_data: 
   db_data_mysql:
+
+
 
 services:
   pytest:
@@ -22,42 +25,6 @@ services:
     networks:
       - backend
       - mlflow
-    environment:
-      DB_ENV: ${DB_ENV}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
-      MODEL_INFERENCE: ${MODEL_INFERENCE}
-      FCST_HISTORY: ${FCST_HISTORY}
-      FCST_HORIZON: ${FCST_HORIZON}
-      URL_HISTORICAL: ${URL_HISTORICAL}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      DB_MYSQL_USER: ${DB_MYSQL_USER}
-      DB_MYSQL_HOST: ${DB_MYSQL_HOST}
-      TERM: ${TERM}
-      BUCKET_NAME: ${BUCKET_NAME}
-      MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}    
-    command: ["pytest", "-v"]
-
-  db_mysql:
-    restart: always
-    build: 
-      context: Weather_Medoc_Vineyards/Backend/databases
-    container_name: db_mysql
-    volumes:
-      - db_data_mysql:/var/lib/mysql   
-    networks:
-      - backend
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      DB_MYSQL_USER: ${DB_MYSQL_USER}
-      DB_MYSQL_HOST: ${DB_MYSQL_HOST}
-    
-  api:
-    restart: always
-    build:
-      context: Weather_Medoc_Vineyards/Backend/api
-    container_name: api
     environment:
       SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: ${ALGORITHM}
@@ -81,15 +48,34 @@ services:
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       TERM: ${TERM}
       BUCKET_NAME: ${BUCKET_NAME}
-      MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}      
+      MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}     
+    command: ["pytest", "-v"]
     ports:
       - 8000:8000
     depends_on:
       - db_mysql
+
+
+
+
+
+  db_mysql:
+    restart: always
+    build: 
+      context: ./databases
+    container_name: db_mysql
+    volumes:
+      - db_data_mysql:/var/lib/mysql   
     networks:
-        - outside
-        - backend
-        - mlflow
+      - backend
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      DB_MYSQL_USER: ${DB_MYSQL_USER}
+      DB_MYSQL_HOST: ${DB_MYSQL_HOST}
+
+
+
 
   mlflow_postgresql:
     restart: always
@@ -112,6 +98,8 @@ services:
         - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
     networks:
         - mlflow
+
+
 
   mlflow_server:
     restart: always
