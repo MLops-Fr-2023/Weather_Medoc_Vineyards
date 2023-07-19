@@ -6,19 +6,16 @@ on:
       - main
       - develop
       - develop_gh_actions
-  pull_request:
-    branches:
-      - '*'
+  pull_request: {}  # Trigger the workflow for all pull requests
 
 jobs:
-
   test:
     name: Run Pytest
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up Docker
       uses: docker/setup-buildx-action@v2
