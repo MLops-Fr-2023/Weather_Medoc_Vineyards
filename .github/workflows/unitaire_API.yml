@@ -40,7 +40,6 @@ jobs:
         -e AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }} \
         -e BUCKET_NAME=${{ secrets.BUCKET_NAME }} \
         pytest  # Run the pytest command inside the pytest service
-      env:
 
     - name: Clean up Docker
       if: always()
