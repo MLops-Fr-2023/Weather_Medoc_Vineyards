@@ -6,12 +6,9 @@ on:
       - main
       - develop
       - develop_gh_actions
-  pull_request:
-    branches:
-      - '*'
+  pull_request: {}  # Trigger the workflow for all pull requests
 
 jobs:
-
   test:
     name: Run Pytest
     runs-on: ubuntu-latest
@@ -21,7 +18,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Set up Docker
-      uses: docker/setup-docker@v1
+      uses: docker/setup-buildx-action@v2
 
     - name: Test Backend
       run: |
@@ -40,7 +37,6 @@ jobs:
         -e AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }} \
         -e BUCKET_NAME=${{ secrets.BUCKET_NAME }} \
         pytest  # Run the pytest command inside the pytest service
-      env:
 
     - name: Clean up Docker
       if: always()
