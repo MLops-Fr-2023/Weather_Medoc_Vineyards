@@ -14,7 +14,7 @@ from tsai.inference import load_learner
 from business.KeyReturn import KeyReturn
 from business.HyperParams import HyperParams
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from config.variables import VarEnvWeatherApi, VarEnvInferenceModel, S3LogHandler, S3VarAccess, VarEnvMLflow
+from config.variables import VarEnvInferenceModel, S3LogHandler, S3VarAccess, VarEnvMLflow
 
 if os.name == 'nt':
     temp = pathlib.PosixPath
@@ -24,7 +24,6 @@ if os.name == 'nt':
 LoggingConfig.setup_logging()
 
 #Import des variables
-varenv_weather_api = VarEnvWeatherApi()
 varenv_inference_model = VarEnvInferenceModel()
 varenv_mlflow = VarEnvMLflow()
 
@@ -131,13 +130,11 @@ class Tools():
             save_new_df = new_df
 
             # loading of model
-            #learn = load_learner(fname='Margaux_v2b.pt')
-            print('model loading...')
-            model_name = varenv_inference_model.model_inference + '-' +city
-            stage = "Production"
-            mlflow.set_tracking_uri(Tools.mlflow_server_port)
-            learn = mlflow.fastai.load_model(model_uri=f"s3://mlflow/{model_name}/{stage}")
+            model_uri = str(varenv_inference_model.s3_root) + str(varenv_inference_model.model_inference) + str(varenv_inference_model.path_artifact)
+            learn = mlflow.fastai.load_model(model_uri=model_uri)
             print('model loaded')
+
+
             # todo : make this line work
             # new_df = learn.transform(new_df)
 
@@ -154,7 +151,8 @@ class Tools():
 
             df_total_pred= pd.concat([save_new_df, preds_df], ignore_index = True)
 
-            return df_total_pred 
+            return {KeyReturn.success.value: df_total_pred}
+        
         except Exception as e:
             logging.error(f"Forecast failed : {e}")
             return {'error': f"Forecast failed"}        
