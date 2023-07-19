@@ -41,7 +41,7 @@ services:
   db_mysql:
     restart: always
     build: 
-      context: Weather_Medoc_Vyniards/Backend/databases
+      context: Weather_Medoc_Vineyards/Backend/databases
     container_name: db_mysql
     volumes:
       - db_data_mysql:/var/lib/mysql   
@@ -56,7 +56,7 @@ services:
   api:
     restart: always
     build:
-      context: Weather_Medoc_Vyniards/Backend/api
+      context: Weather_Medoc_Vineyards/Backend/api
     container_name: api
     environment:
       SECRET_KEY: ${SECRET_KEY}
@@ -116,7 +116,7 @@ services:
   mlflow_server:
     restart: always
     build:
-      context: Weather_Medoc_Vyniards/Backend/mlflow
+      context: Weather_Medoc_Vineyards/Backend/mlflow
     image: mlflow_server
     container_name: mlflow_server
     ports:
