@@ -56,9 +56,6 @@ services:
       - db_mysql
 
 
-
-
-
   db_mysql:
     restart: always
     build: 
@@ -104,7 +101,7 @@ services:
   mlflow_server:
     restart: always
     build:
-      context: Weather_Medoc_Vineyards/Backend/mlflow
+      context: ./mlflow
     image: mlflow_server
     container_name: mlflow_server
     ports:
