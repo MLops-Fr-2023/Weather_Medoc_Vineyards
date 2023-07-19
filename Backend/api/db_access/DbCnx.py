@@ -392,7 +392,7 @@ class UserDao():
     
     @staticmethod
     def get_last_datetime_weather(city: str):
-        ctx = DbCnx.get_db_cnx()
+        ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
 
         request = """

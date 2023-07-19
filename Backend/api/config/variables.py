@@ -42,9 +42,11 @@ class VarEnvWeatherApi():
 
 class VarEnvInferenceModel():
     def __init__(self, config=config):
-        self.model_inference = config['MODEL_INFERENCE']
-        self.fcst_history = config['FCST_HISTORY']
-        self.fcst_horizon = config['FCST_HORIZON']
+        self.s3_root = os.environ.get('S3_ROOT_INFERENCE')
+        self.path_artifact = os.environ.get('PATH_ARTIFACT')
+        self.model_inference = os.environ.get('MODEL_INFERENCE')
+        self.fcst_history = os.environ.get('FCST_HISTORY')
+        self.fcst_horizon = os.environ.get('FCST_HORIZON')
 
 class VarEnvMLflow():
     def __init__(self, config=config):
