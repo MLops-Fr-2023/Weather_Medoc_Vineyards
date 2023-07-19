@@ -7,3 +7,4 @@ COPY .htpasswd /etc/nginx
 # Copy proxy config
 COPY service1.conf /etc/nginx/sites-enabled/
 COPY service2.conf /etc/nginx/sites-enabled/
+COPY service3.conf /etc/nginx/sites-enabled/
