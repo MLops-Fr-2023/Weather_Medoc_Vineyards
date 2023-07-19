@@ -7,9 +7,13 @@ Parameters:
     Type: String
     Default: 155.155.0.0/16
     Description: Enter the main VPC_Chateau_Margot CIDR block.
-  AmiIdentifier:
+  AmiIdentifierPrivate:
     Type: String
-    Default: ami-05b5a865c3579bbc4
+    Default: ami-073f4eb2fd7b7a133
+    Description: The AMI identifier to deploy.
+  AmiIdentifierPublic:
+    Type: String
+    Default: ami-05398fb1c8b885c0c
     Description: The AMI identifier to deploy.
   S3BucketName:
     Type: String
@@ -356,7 +360,7 @@ Resources:
       Type: AWS::AutoScaling::LaunchConfiguration
       Properties:
         AssociatePublicIpAddress:  True
-        ImageId: ami-05b5a865c3579bbc4
+        ImageId: !Ref AmiIdentifierPublic
         InstanceType: t3.large
         SecurityGroups:
           - !Ref PublicSecurityGroup
@@ -368,7 +372,7 @@ Resources:
       Type: AWS::AutoScaling::LaunchConfiguration
       Properties:
         AssociatePublicIpAddress:  False
-        ImageId: ami-05b5a865c3579bbc4
+        ImageId: !Ref AmiIdentifierPrivate
         InstanceType: t3.large
         SecurityGroups:
           - !Ref PrivateSecurityGroup
@@ -437,7 +441,7 @@ Resources:
             TargetGroupArn: !Ref PublicTargetGroup
 
   # S3 BUCKET
-  S3Bucket:
+  bucket:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Ref S3BucketName
@@ -450,70 +454,26 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref S3BucketName
-  
-  LogsFolder:
-  Type: 'AWS::S3::BucketPolicy'
-  Properties:
-    Bucket: !Ref S3Bucket
-    PolicyDocument:
-      Version: "2012-10-17"
-      Statement:
-        - Sid: AllowLogsFolder
-          Effect: Allow
-          Principal: "*"
-          Action:
-            - 's3:PutObject'
-            - 's3:GetObject'
-          Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
-          Condition:
-            StringEquals:
-              s3:prefix: "logs/*"
 
-  MlflowFolder:
-    Type: 'AWS::S3::BucketPolicy'
-    Properties:
-      Bucket: !Ref S3Bucket
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Sid: AllowMlflowFolder
-            Effect: Allow
-            Principal: "*"
-            Action:
-              - 's3:PutObject'
-              - 's3:GetObject'
-            Resource: !Sub "arn:aws:s3:::${S3Bucket}/*"
-            Condition:
-              StringEquals:
-                s3:prefix: "mlflow/*"
 
   MyBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref MyS3Bucket
+      Bucket: !Ref bucket
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
           - Sid: AllowAccessFromSuperUser
             Effect: Allow
             Principal:
-              AWS: !GetAtt SuperUser.Arn
+              AWS: arn:aws:iam::131674823919:user/SuperUser
             Action:
               - s3:GetObject
               - s3:PutObject
               - s3:ListBucket
             Resource:
-              - !Sub "arn:aws:s3:::${MyS3Bucket}"
-              - !Sub "arn:aws:s3:::${MyS3Bucket}/*"
-  MyEC2BucketAccess:
-    Type: AWS::EC2::SecurityGroupEgress
-    Properties:
-      GroupId: !Ref MySecurityGroup
-      DestinationSecurityGroupId: !GetAtt MyEC2Instance.SecurityGroups.0
-      IpProtocol: tcp
-      FromPort: 0
-      ToPort: 65535
-      Description: Allow full access to S3 bucket
+              - !Sub "arn:aws:s3:::${bucket}"
+              - !Sub "arn:aws:s3:::${bucket}/*"
 
   # VPC ENDPOINT FOR S3
   VpcEndpointS3:
@@ -543,4 +503,4 @@ Outputs:
     Value: !Ref PrivateSubnetCMB
 
   S3BucketOutput:
-    Value: !Ref S3Bucket
+    Value: !Ref bucket

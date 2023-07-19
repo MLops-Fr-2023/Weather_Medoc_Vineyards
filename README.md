@@ -52,3 +52,79 @@ cd Backend
 ./run_docker_compose.sh
 ```
 
+# Infrastructure part.
+
+## Presentation
+
+In this project you will find an AWS folder in order to run your application according to the IaS (Infrastructure as Code)
+The folder contains :
+- The infrastructure.yml file which must be used with CloudFormation
+- The VM_setup.sh to set up a VM (Docker, Kubernetes, Git, AWS CLI)
+- bucket_folders.sh which must be use from a VM INSIDE the private subnet and before to deploy the application. This files allows the creation of subfolders inside the bucket
+- The folder bucket_documents
+
+NB : Folder and subfolders will be created, but they are empty. Please fill them according to the folder present on this repo : bucket_documents
+NB_bis : Verify that the name you give to your bucket in the IaS is the same as the name of the bucket in the bucket_folders.sh
+
+## Protocol
+
+
+###Create the PRIVATE AMI:
+- Fill the Infrastructure/.env_private file with your personnal information
+- Create a VM according to your requirements. Do not forget to allow IP association otherwise you'll not be able to connect. Provide at least 50g of EBS.
+- Once the VM started, connect to your VM
+- Clone the repo : https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git
+- Execute the following command :
+```
+    cd Weather_Medoc_Vineyards/Infrastructure
+    sudo bash VM_setup_private.sh
+    'Y' or 'Yes' if requiered
+    cd ~
+    sudo rm -rf Weather_Medoc_Vineyards
+```
+- Create an SSHkey to allow Github communication
+```
+    ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+    cat ~/.ssh/id_rsa.pub
+```
+    
+    - Copy the printed Key and paste it in the SSH key section of your Github Account - Name it "Prod_VM_Private_AMI"
+- From your AWS consol, create a AMI instance from your newly setted up VM
+- Kill the VM
+- Copy/Paste the ID of the AMI in the AmiIdentifierPrivate.Default section of infrastructure.yml
+
+
+###Create the PUBLIC AMI:
+- Fill the Infrastructure/.env_public file with your personnal information
+- Create a VM according to your requirements. Do not forget to allow IP association otherwise you'll not be able to connect. Provide 30g of EBS.
+- Once the VM started, connect to your VM
+- Clone the repo : https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git
+- Execute the following command :
+```
+    cd Weather_Medoc_Vineyards/Infrastructure
+    sudo bash VM_setup_public.sh
+    'Y' or 'Yes' if requiered
+    cd ~
+    sudo rm -rf Weather_Medoc_Vineyards
+```
+- Create an SSHkey to allow Github communication
+```
+    ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+    cat ~/.ssh/id_rsa.pub
+```
+
+    - Copy the printed Key and paste it in the SSH key section of your Github Account - Name it "Prod_VM_Public_AMI"
+- From your AWS consol, create a AMI instance from your newly setted up VM
+- Kill the VM
+- Copy/Paste the ID of the AMI in the AmiIdentifierPublic.Default section of infrastructure.yml
+
+
+###Create the Infrastructure
+- Launch the IaS Stack from CloudFormation
+- Set up a bastion Host to access your VMs on the private subnet (https://dev.to/aws-builders/ssh-setup-and-tunneling-via-bastion-host-3kcc or any other technics)
+- Clone the repo : git@github.com:MLops-Fr-2023/Weather_Medoc_Vineyards.git
+- Modify 'bucket_folders.sh' according to the name of your bucket and launch with
+    - sudo bash bucket_folders.sh
+
+
+
