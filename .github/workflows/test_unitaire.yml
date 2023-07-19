@@ -15,16 +15,16 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Set up Docker
       uses: docker/setup-buildx-action@v2
 
     - name: Test Backend
       run: |
-        docker-compose -f docker-compose.test.yml build  # Build the pytest service defined in docker-compose.test.yml
-        docker-compose -f docker-compose.test.yml up -d  # Start the pytest service in detached mode
-        docker-compose -f docker-compose.test.yml run \
+        docker-compose -f Weather_Medoc_Vineyards/Backend/docker-compose.test.yml build  # Build the pytest service defined in docker-compose.test.yml
+        docker-compose -f Weather_Medoc_Vineyards/Backend/docker-compose.test.yml up -d  # Start the pytest service in detached mode
+        docker-compose -f Weather_Medoc_Vineyards/Backend/docker-compose.test.yml run \
         -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
         -e ALGORITHM=${{ secrets.ALGORITHM }} \
         -e WEATHER_API_KEY=${{ secrets.WEATHER_API_KEY }} \
@@ -40,4 +40,4 @@ jobs:
 
     - name: Clean up Docker
       if: always()
-      run: docker-compose -f docker-compose.test.yml down  # Stop and remove the containers and network
+      run: docker-compose -f Weather_Medoc_Vineyards/Backend/docker-compose.test.yml down  # Stop and remove the containers and network
