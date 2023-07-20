@@ -165,7 +165,7 @@ class Tools():
 
         # transform data
         df = Tools.transform_data(df, city)
-        
+
         try : 
             with mlflow.start_run():
                 print(f"\n {train_label} \n")  
@@ -180,7 +180,7 @@ class Tools():
                 learn = TSForecaster(X, y, splits=splits, batch_size=hyper_params.batch_size, path='model_tsai', pipelines=[Tools.exp_pipe],
                                 arch="PatchTST", arch_config=vars(hyper_params.arch_config), metrics=[mse, mae])
 
-                lr_max = learn.lr_find().valley
+                lr_max = 0.0025
                 learn.fit_one_cycle(hyper_params.n_epochs, lr_max=lr_max)
                 y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
                 y_test_preds = to_np(y_test_preds)
@@ -231,3 +231,57 @@ class Tools():
         except Exception as e:
             logging.error(f"Trainings failed : {e}")
             return {KeyReturn.error.value: f"Trainings failed : {e}"}
+    
+    def retrain(city: str, n_epochs: int):
+        mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
+
+        # import data
+        df = UserDao.get_weather_data_df()  
+
+        # transform data
+        df = Tools.transform_data(df, city)
+        print(df.head(3))
+        
+        try : 
+            with mlflow.start_run():
+
+                splits = get_forecasting_splits(df, fcst_history=Tools.fcst_history, fcst_horizon=Tools.fcst_horizon,
+                                                datetime_col=Tools.datetime_col, valid_size=Tools.valid_size, test_size=Tools.test_size, show_plot = False)
+
+                X, y = prepare_forecasting_data(df, fcst_history=Tools.fcst_history, fcst_horizon=Tools.fcst_horizon,
+                                                x_vars=Tools.columns_keep, y_vars=Tools.columns_keep)
+
+                # loading of model
+                model_uri = str(varenv_inference_model.s3_root) + str(varenv_inference_model.model_inference) + str(varenv_inference_model.path_artifact)
+                learn = mlflow.fastai.load_model(model_uri=model_uri)
+                print('model loaded')
+
+                #lr_max = learn.lr_find().valley
+                lr_max=0.0025
+                learn.fit_one_cycle(n_epochs, lr_max=lr_max)
+
+                y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
+                y_test_preds = to_np(y_test_preds)
+                y_test = y[splits[2]]
+
+                varlist = Tools.get_var_data(y_test, Tools.fcst_horizon)
+                predlist = Tools.get_var_data(y_test_preds, Tools.fcst_horizon)
+                results_df = Tools.get_results(df, varlist, predlist)
+                all_metrics = Tools.get_all_metrics(results_df)  
+                Tools.get_chart(results_df, df, varlist, predlist)
+
+                logging.info(f"Retraining performed with model : {varenv_inference_model.model_inference}")
+
+                mlflow.log_metrics(all_metrics)
+
+                mlflow.log_artifact("predictions.png")
+                results_df.reset_index(inplace=True)
+                results_df.to_csv('scores.csv',index=True)
+                mlflow.log_artifact('scores.csv')
+
+                mlflow.fastai.log_model(fastai_learner = learn, artifact_path = "model")
+                matplotlib.pyplot.close()
+        except Exception as e:
+            return {KeyReturn.error.value: "Training failed : {e}"}
+
+        return {'success': f"Retraining terminated with success"}     

@@ -50,8 +50,10 @@ class VarEnvWeatherApi():
         self.file_id = get_var_value(config, 'FILE_ID')
     
 class VarEnvInferenceModel():
-    def __init__(self, config=config):
+    def __init__(self):
         self.model_inference = get_var_value(config, 'MODEL_INFERENCE')
+        self.s3_root = get_var_value(config, 'S3_ROOT_INFERENCE')
+        self.path_artifact = get_var_value(config, 'PATH_ARTIFACT')
         self.fcst_history = get_var_value(config, 'FCST_HISTORY')
         self.fcst_horizon = get_var_value(config, 'FCST_HORIZON')
 
