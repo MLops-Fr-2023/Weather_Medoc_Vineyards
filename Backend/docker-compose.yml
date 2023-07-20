@@ -36,6 +36,12 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       DB_MYSQL_USER: ${DB_MYSQL_USER}
       DB_MYSQL_HOST: ${DB_MYSQL_HOST}
+    healthcheck:
+      test: mysqladmin ping -h localhost -u $$DB_MYSQL_USER --password=$$MYSQL_PASSWORD
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 55
     
   api:
     restart: always
@@ -69,7 +75,8 @@ services:
     ports:
       - 8000:8000
     depends_on:
-      - db_mysql
+      db_mysql:
+        condition: service_healthy
     networks:
         - outside
         - backend
@@ -97,6 +104,9 @@ services:
         - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
     networks:
         - mlflow
+    depends_on:
+      db_mysql:
+        condition: service_healthy
 
   mlflow_server:
     restart: always
@@ -118,8 +128,7 @@ services:
       MLFLOW_BACKEND: ${MLFLOW_BACKEND}
       HOST_MLFLOW_IP: ${HOST_MLFLOW_IP}
       MLFLOW_PORT: ${MLFLOW_PORT}
-      NGINX_MLFLOW_PORT: ${NGINX_MLFLOW_PORT}
-      #MLFLOW_S3_URL: ${MLFLOW_S3_URL}
+      #NGINX_MLFLOW_PORT: ${NGINX_MLFLOW_PORT}
       MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
       MLFLOW_ARTIFACTS: ${MLFLOW_ARTIFACTS}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -141,8 +150,8 @@ services:
         - mlflow
         - backend
     depends_on:
-        - db_mysql
-        - mlflow_postgresql
+      db_mysql:
+        condition: service_healthy
 
   airflow_postgresql:
     image: postgres:13
