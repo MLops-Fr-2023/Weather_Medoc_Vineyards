@@ -45,6 +45,11 @@ jobs:
         -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
         -e AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }} \
         -e BUCKET_NAME=${{ secrets.BUCKET_NAME }} \
+        -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+        -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
+        -e DB_MYSQL_USER=${{ secrets.DB_MYSQL_USER }} \
+        -e DB_MYSQL_HOST=${{ secrets.DB_MYSQL_HOST }} \
+
         pytest  # Run the pytest command inside the pytest service
 
     - name: Clean up Docker
