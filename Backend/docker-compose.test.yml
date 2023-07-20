@@ -49,6 +49,7 @@ services:
       BUCKET_NAME: ${BUCKET_NAME}
       MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}
       TERM: ${TERM}  
+
     ports:
       - 8000:8000
     depends_on:
