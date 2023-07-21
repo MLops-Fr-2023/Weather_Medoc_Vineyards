@@ -91,9 +91,11 @@ async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    data = {"sub": user.user_id}
     access_token_expires = timedelta(minutes=int(varenv_securapi.access_token_expire_minutes))
     access_token = authent.create_access_token(
-        data={"sub": user.user_id}, expires_delta=access_token_expires
+        data=data, expires_delta=access_token_expires
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
@@ -210,6 +212,7 @@ async def delete_user_permission(user_permissions : Annotated[UserPermission, De
     result = UserDao.delete_user_permission(user_permissions)
     return Handle_Result(result)
     
+
 @app.post("/get_logs",  name='Get logs', tags=['Administrators'])
 async def get_logs(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
     """Get log file"""
@@ -218,6 +221,7 @@ async def get_logs(current_user: Annotated[User, Depends(authent.get_current_act
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
     return UserDao.get_logs()
+
 
 @app.post("/populate_weather_table",  name='Populate wheather table with historical data from Weather API', tags=['Backend'])
 async def populate_weather_table(current_user: Annotated[User, Depends(authent.get_current_active_user)]):

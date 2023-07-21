@@ -44,6 +44,7 @@ jobs:
       MLFLOW_BACKEND: ${{ secrets.MLFLOW_BACKEND }}
       MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
       MLFLOW_ARTIFACTS: ${{ secrets.MLFLOW_ARTIFACTS }}
+      S3_ROOT_INFERENCE: ${{ secrets.S3_ROOT_INFERENCE }}
 
       ACCESS_TOKEN_EXPIRE_MINUTES: ${{ vars.ACCESS_TOKEN_EXPIRE_MINUTES}}
       DB_ENV: ${{ vars.DB_ENV }}
@@ -62,7 +63,7 @@ jobs:
       MLFLOW_PGDATA: ${{ vars.MLFLOW_PGDATA }}
       HOST_MLFLOW_IP: ${{ vars.HOST_MLFLOW_IP }}
       MLFLOW_PORT: ${{ vars.MLFLOW_PORT }}
-
+      PATH_ARTIFACT_INFERENCE: ${{ vars.PATH_ARTIFACT_INFERENCE }}
 
 
     steps:
