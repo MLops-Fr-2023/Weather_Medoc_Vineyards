@@ -119,8 +119,9 @@ with st.sidebar:
     with st.expander("Jacques Douvroy"):
         col1, col2, col3 = st.columns([1,0.5,1])  
         with col1: 
-            st.image(read_image_bucket( image_path_timages + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
-            st.image(read_image_bucket( image_path_timages + 'github_blank.png'),channels="RGB", output_format="auto")
+            st.image(read_image_bucket( image_path_images + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
+            st.image(read_image_bucket( image_path_images + 'github_blank.png'),channels="RGB", output_format="auto")
+
         with col3:            
             st.write("")
             st.write("")

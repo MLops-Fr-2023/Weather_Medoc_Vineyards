@@ -298,5 +298,16 @@ async def train_models(city: Annotated[City, Depends()], train_label: str,
     result = Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict, train_label=train_label)               
     return Handle_Result(result)
 
+@app.post("/retrain_model/{city}",  name='Launch a retraining of the model', tags=['Backend'])
+async def train_models(city: Annotated[City, Depends()],n_epochs: int,
+                       current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+    """Launch a new train of current model on new data"""
+
+    if not Permissions.Permissions.training.value in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+       
+    result = Tools.retrain(city=city.name_city, n_epochs=n_epochs)               
+    return Handle_Result(result)
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000)

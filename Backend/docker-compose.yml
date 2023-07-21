@@ -63,6 +63,8 @@ services:
       MODEL_INFERENCE: ${MODEL_INFERENCE}
       FCST_HISTORY: ${FCST_HISTORY}
       FCST_HORIZON: ${FCST_HORIZON}
+      S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}
+      PATH_ARTIFACT: ${PATH_ARTIFACT}
       URL_HISTORICAL: ${URL_HISTORICAL}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -76,6 +78,7 @@ services:
       MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}
       PATH_ARTIFACT_INFERENCE: ${PATH_ARTIFACT_INFERENCE}
       S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}   
+
     ports:
       - 8000:8000
     depends_on:
@@ -350,6 +353,9 @@ services:
       LOAD_EX: ${LOAD_EX}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      API_USER: ${API_USER}
+      API_PWD: ${API_PWD}
+      N_EPOCHS: ${RETRAIN_EPOCHS}
     volumes:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
@@ -383,6 +389,9 @@ services:
       LOAD_EX: ${LOAD_EX}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
+      API_USER: ${API_USER}
+      API_PWD: ${API_PWD}
+      N_EPOCHS: ${RETRAIN_EPOCHS}
     volumes:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
@@ -437,4 +446,3 @@ services:
     networks:
         - airflow
         - proxy
-
