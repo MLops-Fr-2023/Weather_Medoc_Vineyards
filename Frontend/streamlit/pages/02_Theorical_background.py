@@ -42,9 +42,11 @@ def read_file(filename):
 @st.cache_data
 def read_csv_st(filename , sep_st):
         return pd.read_csv(fs.open(filename), sep= sep_st)
-path = (df_path + 'GBIF_tax.csv')
-df = read_csv_st(path ,sep_st='\t')
-df2 = read_csv_st(df_path + "All_ranks_and_occurence.csv",sep_st=',')
+
+# TODO : What is it?
+# path = (df_path + 'GBIF_tax.csv')
+# df = read_csv_st(path ,sep_st='\t')
+# df2 = read_csv_st(df_path + "All_ranks_and_occurence.csv",sep_st=',')
 
 
 ##############################
@@ -106,11 +108,11 @@ def main():
         col5, col6, col7, col8 = st.columns([0.5,4,4,0.5])
         with col6 : 
             #st.image(read_image_bucket( image_path + 'XXXXXX.png'),channels="RGB", output_format="auto")
-        st.markdown("""---""")
+            st.markdown("""---""")
         with col7: 
             st.write("""""")
-        st.write("")
-        st.write("")
+            st.write("")
+            st.write("")
 
         with c2: 
             st.plotly_chart(fig2 ,width= 900) 
@@ -139,20 +141,20 @@ def main():
         col5, col6, col7 = st.columns([0.5,8,0.5])
         with col6 : 
         
-        col1, col2, col3 = st.columns([0.5,8,0.5])
+            col1, col2, col3 = st.columns([0.5,8,0.5])
         with col2:
             st.write("""""")
             st.write("")
             st.write("")
             st.write("""""")
-        st.write("")
-        st.write("")
-        
-        st.write("")
-        st.write("")
-        st.write("")
-        st.write("")
-        st.markdown("""---""")
+            st.write("")
+            st.write("")
+            
+            st.write("")
+            st.write("")
+            st.write("")
+            st.write("")
+            st.markdown("""---""")
         col1, col2, col3 = st.columns([0.5,8,0.5])
         with col2:
             st.write("""""")
