@@ -61,8 +61,8 @@ class Tools():
         df = df.loc[df.CITY == city]
         df = df.drop_duplicates()
         # sort lines to have chronological order
-        df = df.sort_values(by=['DATE'])  
         df['DATE'] = pd.to_datetime(df['DATE'])
+        df = df.sort_values(by=['DATE'])
         # reset index to be able to use split function
         df.reset_index(drop = True, inplace = True)                     
         # remove categorical columns
