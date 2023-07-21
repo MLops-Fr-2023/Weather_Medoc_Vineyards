@@ -43,7 +43,6 @@ def read_file(filename):
 
 ########### TEXT  ############
 
-
 def main():
       
     st.markdown("<h3 style='text-align: center; color: violet;'>This is our team. We are glad to host you!</h3>", unsafe_allow_html=True)
@@ -53,23 +52,32 @@ def main():
 
     with c1 : 
         st.subheader('Joffrey Lemery')
-        st.image(read_image_bucket( image_path_team + 'joffrey_lemery.jpg'),channels="RGB", output_format="JPEG", width=300)        
+        st.image(read_image_bucket(image_path_team + 'joffrey_lemery.jpg'),channels="RGB", output_format="JPEG", width=300)        
     with c2 : 
         st.subheader('Nicolas Carayon') 
-        st.image(read_image_bucket( image_path_team + 'nicolas_carayon.jpg'),channels="RGB", output_format="JPEG", width=250)        
+        st.image(read_image_bucket(image_path_team + 'nicolas_carayon.jpg'),channels="RGB", output_format="JPEG", width=250)        
     with c3 : 
-        st.subheader('Jacques Douvroy') 
-        st.image(read_image_bucket( image_path_team + 'jacques_douvroy.jpg'),channels="RGB", output_format="JPEG", width=300)        
+        st.subheader('Jacques Drouvroy') 
+        st.image(read_image_bucket(image_path_team + 'jacques_douvroy.jpg'),channels="RGB", output_format="JPEG", width=250)        
 
     c1, c2, c3 = st.columns(3, gap="large")
 
     c1, c2, c3 = st.columns(3, gap="large")
     with c1 : 
-        st.write("Joffrey is a graduate engineer from France and Quebec.\nHis energy, his technical skills as a MLE and his infinite thirst for knowledge bring people together around technical and challenging projects. ")
+        st.write("""
+Joffrey is a graduate engineer from France and Quebec.
+
+His energy, his technical skills as a MLE and his infinite thirst for knowledge bring people together around technical and challenging projects.""")
     with c2 : 
-        st.write("Nicolas is the embodiment of rigour. \nHis strong technical background in development and his functional skills make him a strong asset both on the Ops side as well as the functionnal side")
+        st.write("""
+Nicolas is the embodiment of rigour.
+
+His strong technical background in development and his functional skills make him a strong asset both on the Ops side as well as the functionnal side.""")
     with c3 : 
-        st.write("Jacques is the team's spirit of discovery and science. \nHis skills in DS and his quick understanding of the issues at stake are invaluable assets for IA and MLE project")
+        st.write("""
+Jacques is the team's spirit of discovery and science.
+
+His skills in DS and his quick understanding of the issues at stake are invaluable assets for IA and MLE project.""")
 
     st.markdown("""---""")
 

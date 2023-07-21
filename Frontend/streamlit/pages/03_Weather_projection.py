@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import requests
 import os
 import s3fs
+import pandas as pd
+from datetime import datetime, timedelta
 
 ######## CONFIGURATION #######
 
@@ -71,8 +73,7 @@ def get_jwt_token(username, password):
 def call_forecast_api(jwt_token, city):
     headers = {"Authorization": f"Bearer {jwt_token}"}
     url = f"{API_BASE_URL}{FORECAST_ENDPOINT}{city}"
-    response = requests.get(url, headers=headers)
-
+    response = requests.post(url, headers=headers)
     if response.status_code == 200:
         return response.json()
     elif response.status_code == 401:
@@ -82,73 +83,84 @@ def call_forecast_api(jwt_token, city):
         st.write(response.text)
     return None
 
+def get_dataframe(df):
+    df=df['success']
+    return df
+
 # Function to plot the forecast data
 def plot_forecast_data(forecast_data):
-    # Convert forecast_data to DataFrame (optional, if it's not already a DataFrame)
-    df = pd.DataFrame(forecast_data)
+    # Convert forecast_data to DataFrame
+    df = pd.DataFrame(get_dataframe(forecast_data))
 
-    # Get the time index (assuming the time index is in a column named 'time', adjust accordingly)
-    time_index = pd.to_datetime(df['time'])
+    # Get the time index
+    time_index = pd.to_datetime(df['DATE'])
 
     # Plot each signal as a separate subplot
     for signal_name in df.columns[1:]:  # Assuming the first column is 'time'
         plt.figure(figsize=(10, 5))
-        plt.plot(time_index, df[signal_name], label=signal_name)
+        plt.plot(time_index, df[signal_name])
         plt.xlabel('Time')
         plt.ylabel('Value')
-        plt.title(f'{signal_name} Forecast')
-        plt.legend()
+        plt.axvline(datetime.now(), color='orange', linestyle='--')
+        plt.title(signal_name)
         st.pyplot(plt)
 
 # Function to print the dataframe for details
 def show_dataframe_details(dataframe):
-    st.dataframe(dataframe)
+    st.dataframe(get_dataframe(dataframe))
 
 
 def main():
+    if 'jwt_token' not in st.session_state:
+        st.session_state.jwt_token = None
     st.title(":violet[Weather Prediction]")
     st.subheader("Credentials")
-    st.write("Please enter your credentials before to be allowed to use our IA application. \nEvery Token is available for 2h.")
+    st.write("""
+Please enter your credentials and choose the city to test our IA application.           
+The token is usable for 2 hours""")
 
     username = st.text_input("Username:")
     password = st.text_input("Password:", type="password")
 
-    if st.button("Get JWT Token"):
+    if st.button("Get token"):
         if username and password:
             jwt_token = get_jwt_token(username, password)
             if jwt_token:
                 st.success("JWT Token successfully obtained!")
-                st.write(f"Your JWT Token: {jwt_token}")
-                #weather_forecast(jwt_token)  # Call the forecast function after getting the token
+#                st.write(f"Your JWT Token: {jwt_token}")
+                st.session_state.jwt_token = jwt_token
+
         else:
             st.warning("Please enter correct username and password.")
 
-    # Display the Select City button unconditionally
-    st.subheader("Weather Forecast")
     city = st.selectbox("Select a city for weather forecast:", ALLOWED_CITIES)
+    if st.button("Weather forecast"):
+        if st.session_state.jwt_token is not None:  # Check if the token is obtained before using it
+            if city:
+                forecast_data = call_forecast_api(st.session_state.jwt_token, city)
+                if forecast_data:
+                    st.success("Forecast data obtained successfully!")
+                    st.markdown("""---""")
+                    st.markdown("""---""")
 
-    # Add Streamlit button to trigger API call for weather forecast
-    if st.button("Get Forecast"):
-        if city:
-            forecast_data = call_forecast_api(jwt_token, city)
-            if forecast_data:
-                st.success("Forecast data obtained successfully!")
-                st.markdown("""---""")
-                st.markdown("""---""")
-                # st.write(forecast_data)
+                    st.subheader("Plots Forecast")
+                    plot_forecast_data(forecast_data)
 
-                st.subheader("Plots Forecast")
-                plot_forecast_data(forecast_data)
+                    st.markdown("""---""")
+                    st.markdown("""---""")
 
-                st.markdown("""---""")
-                st.markdown("""---""")
+                    # Show DataFrame details
+                    st.subheader("Forecast Data Details")
+                    show_dataframe_details(forecast_data)
 
-                # Show DataFrame details
-                st.subheader("Forecast Data Details")
-                show_dataframe_details(forecast_data)
-
+            else:
+                st.warning("Please select a city for weather forecast.")
         else:
-            st.warning("Please select a city for weather forecast.")
+            st.warning("Please obtain the JWT token first.")
+
+
+
+
 
 ##############################
 
