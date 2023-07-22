@@ -8,6 +8,8 @@ import os
 
 user_name = os.environ.get('API_USER')
 pwd = os.environ.get('API_PWD')
+# List of arguments to pass to the function
+cities = ["Arsac", "Ludon-Medoc", "Lamarque", "Castelnau-de-Medoc", "Macau", "Soussan", "Margaux"]
 
 my_dag = DAG(
     dag_id='fetch_weather_dag',
@@ -15,7 +17,7 @@ my_dag = DAG(
     schedule_interval=timedelta(hours=3),
     default_args={
         'start_date': days_ago(0)},
-    catchup=False)
+    catchup=True)
 
 def fetch_weather_data():
     print('get token')
@@ -45,17 +47,18 @@ def fetch_weather_data():
 
     return 'fetch_weather_data terminated'
 
-def forecast_data():
+
+def my_function(city):
     print('forecast data')
     token_type = Variable.get(key='token_type')
     access_token = Variable.get(key='access_token')
-    url = 'http://api:8000/forecast_city/{city}?name_city=Margaux'
+    url = 'http://api:8000/forecast_city/'+city
     headers = {
     "accept": "application/json",
     "Authorization": f"{token_type} {access_token}"}
     requests.post(url, headers=headers)
 
-    return 'process_raw_data terminated'
+    return f'process_raw_data terminated for {city}'
 
 fetch_weather_data = PythonOperator(
     task_id='fetch_weather_data',
@@ -64,10 +67,13 @@ fetch_weather_data = PythonOperator(
     doc="""use api root token to have it
             use api root to  update data""")
 
-forecast_data = PythonOperator(
-    task_id='forecast_data',
-    python_callable=forecast_data,
-    dag=my_dag,
-    doc="""use api root to forecast data""")
 
-fetch_weather_data >> forecast_data
+# Define the tasks to call the function with different arguments
+for city in cities:
+    task = PythonOperator(
+        task_id=f'Forecast_for_{city}',
+        python_callable=my_function,
+        op_args=[city],  # Pass the city as a list
+        dag=my_dag)
+    
+    fetch_weather_data >> task
