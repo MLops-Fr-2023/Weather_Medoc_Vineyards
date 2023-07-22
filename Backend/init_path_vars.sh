@@ -1,0 +1,11 @@
+#!/bin/bash
+
+sudo chown -R $USER $AIRFLOW_PGDATA
+
+export BACKEND_PROJ_DIR=$(pwd)
+export AIRFLOW_PROJ_DIR=${BACKEND_PROJ_DIR}/airflow
+export MLFLOW_PROJ_DIR=${BACKEND_PROJ_DIR}/mlflow
+
+echo $BACKEND_PROJ_DIR
+echo $AIRFLOW_PROJ_DIR
+echo $MLFLOW_PROJ_DIR

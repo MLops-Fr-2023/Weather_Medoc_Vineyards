@@ -10,13 +10,11 @@ rm -rf ./airflow/logs
 rm -rf ./airflow/plugins
 
 mkdir ./airflow/logs ./airflow/plugins
-source ./.env
-sudo chown -R $USER $AIRFLOW_PGDATA
 
+source ./.env
+source ./init_path_vars.sh
 
 # Create the "outside" network
 docker network create outside
-
-#sudo docker-compose build --no-cache
 docker-compose build
 docker-compose up
