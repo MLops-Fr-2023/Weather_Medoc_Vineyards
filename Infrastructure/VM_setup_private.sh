@@ -2,6 +2,8 @@
 
 export DEBIAN_FRONTEND=noninteractive
 
+
+
 ##################################
 ############# Docker #############
 ##################################
@@ -24,15 +26,25 @@ sudo chmod a+r /etc/apt/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
 sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
+
+
 ##################################
 ##### Install Docker Engine ######
 ##################################
 
-sudo apt-get update -y 
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo apt  install -y docker-compose --no-restart
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 sudo groupadd docker
 sudo usermod -aG docker $USER
+
+
+##################################
+##### Install Docker Compose #####
+##################################
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+
 
 
 ##################################
@@ -40,6 +52,8 @@ sudo usermod -aG docker $USER
 ##################################
 
 curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+
+
 
 ##################################
 ######## Other Librairies ########
@@ -50,23 +64,6 @@ curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
 #### PIP
 sudo apt-get install -y python3-pip
 
-#### GIT
-
-sudo apt update
-sudo apt install -y git
-
-# Source the .env_private file to set Git user.name and user.email
-if [[ -f .env_private ]]; then
-    source .env_private
-    git config --global user.name "$GIT_USERNAME"
-    git config --global user.email "$GIT_EMAIL"
-else
-    echo ".env_private file not found. Make sure to create the .env_private file with the required Git variables."
-    exit 1
-fi
-
-# Configure Git to use SSH for authentication with GitHub
-git config --global url."git@github.com:".insteadOf "https://github.com/"
 
 #### AWS CLI
 
@@ -95,15 +92,21 @@ rm -rf awscliv2.zip
 # Verify installation
 aws --version
 
+# Ensure the script is running in the same directory as .env_private
+SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
+
 # Source the .env_private file to set the AWS environment variables
-if [[ -f .env_private ]]; then
-    source .env_private
+if [[ -f "$SCRIPT_DIR/.env_private" ]]; then
+    source "$SCRIPT_DIR/.env_private"
+    
+    # Debugging: Print loaded AWS variables
+    echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
+    echo "AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY"
+    echo "AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION"
 else
     echo ".env_private file not found. Make sure to create the .env_private file with the required AWS variables."
     exit 1
 fi
 
 rm -f awscliv2.zip
-
-logout
 

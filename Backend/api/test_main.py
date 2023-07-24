@@ -278,15 +278,15 @@ def test_add_user_permission(api_client, user_permission, user_permission_admax,
     response = api_client.post("/add_user_permission", params=user_permission, headers=auth_headers_test)
     assert response.status_code == HttpCodes.access_refused
 
-    # Authenticated with permission trying to delete permission to non editable user "admax"
+    # Authenticated with permission trying to add permission to non editable user "admax"
     response = api_client.post("/add_user_permission", params=user_permission_admax, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.access_refused
 
-    # Authenticated with permission trying to delete permission to a non existing user_id    
+    # Authenticated with permission trying to add permission to a non existing user_id    
     response = api_client.post("/add_user_permission", params=user_permission_false_user, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.bad_request
 
-    # Authenticated with permission trying to delete a non existing permission_id    
+    # Authenticated with permission trying to add a non existing permission_id    
     response = api_client.post("/add_user_permission", params=user_permission_false_permission, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.bad_request
 

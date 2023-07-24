@@ -108,7 +108,12 @@ services:
     depends_on:
       db_mysql:
         condition: service_healthy
-  
+    healthcheck:
+      test: pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB -p $$POSTGRES_PORT
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 55
 
   mlflow_server:
     restart: always
@@ -153,5 +158,7 @@ services:
     depends_on:
       db_mysql:
         condition: service_healthy
+      mlflow_postgresql:
+        condition: service_healthy   
 
 
