@@ -49,9 +49,19 @@ services:
       BUCKET_NAME: ${BUCKET_NAME}
       MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}
       PATH_ARTIFACT_INFERENCE: ${PATH_ARTIFACT_INFERENCE}
-      S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}   
+      S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}
     ports:
-      - 8000:8000   
+      - 8000:8000
+    
+    
+      
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     networks:
         - outside
         - backend
@@ -130,7 +140,10 @@ services:
     networks:
         - proxy
         - mlflow
-        - backend    
+        - backend
+    
+    
+    
 
   airflow_postgresql:
     image: postgres:13
@@ -225,7 +238,6 @@ services:
         condition: service_healthy
     networks:
         - airflow
-
 
   airflow_flower:
     build:
