@@ -12,3 +12,4 @@
 /Backend/airflow/redis-data/**
 /Backend/airflow/database/**
 /Backend/.env.uid
+/Infrastructure/aws/dist*

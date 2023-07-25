@@ -1,4 +1,5 @@
 #!/bin/bash
+
 docker-compose down
 
 #Clean leger (on garde le cache)
