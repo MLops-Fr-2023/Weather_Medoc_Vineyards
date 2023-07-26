@@ -52,7 +52,8 @@ VALUES
 ('external_client', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1),
 ('admax', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1),
 ('backend', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1),
-('test', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1);
+('test', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1),
+('user_test', '$2b$12$4mDimtgnr1BfIPFuU.hGK.sZGCzibTzRlgWEliug6IeGoPuZhXnry', CURDATE(), CURDATE(), 1);
 
 INSERT INTO PERMISSIONS (PERMISSION_ID, DESCRIPTION)
 VALUES 

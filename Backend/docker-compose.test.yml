@@ -16,7 +16,6 @@ volumes:
   db_data_mysql:
 
 
-
 services:
   api_pytest:
     build:
@@ -31,10 +30,7 @@ services:
       WEATHER_API_KEY: ${WEATHER_API_KEY}
       DB_ENV: ${DB_ENV}
       FILE_ID: ${FILE_ID}
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
-      WAREHOUSE_SNOWFLAKE: ${WAREHOUSE_SNOWFLAKE}
-      DB_SNOWFLAKE: ${DB_SNOWFLAKE}
-      SCHEMA_SNOWFLAKE: ${SCHEMA_SNOWFLAKE}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}      
       MODEL_INFERENCE: ${MODEL_INFERENCE}
       FCST_HISTORY: ${FCST_HISTORY}
       FCST_HORIZON: ${FCST_HORIZON}
@@ -51,38 +47,9 @@ services:
       TERM: ${TERM}
       PATH_ARTIFACT_INFERENCE: ${PATH_ARTIFACT_INFERENCE}
       S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}  
-
     ports:
-      - 8000:8000
-    depends_on:
-      db_mysql:
-        condition: service_healthy 
+      - 8000:8000    
     command: pytest --verbose
-
-
-  db_mysql:
-    restart: always
-    build: 
-      context: ./databases
-    container_name: db_mysql
-    volumes:
-      - db_data_mysql:/var/lib/mysql  
-    expose:
-      - 3306 
-    networks:
-      - backend
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      DB_MYSQL_USER: ${DB_MYSQL_USER}
-      DB_MYSQL_HOST: ${DB_MYSQL_HOST}
-    healthcheck:
-      test: mysqladmin ping -h localhost -u $$DB_MYSQL_USER --password=$$MYSQL_PASSWORD
-      start_period: 5s
-      interval: 5s
-      timeout: 5s
-      retries: 55
-
 
   mlflow_postgresql:
     restart: always
@@ -105,9 +72,6 @@ services:
         - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
     networks:
         - mlflow
-    depends_on:
-      db_mysql:
-        condition: service_healthy
     healthcheck:
       test: pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB -p $$POSTGRES_PORT
       start_period: 5s
@@ -155,10 +119,5 @@ services:
         - proxy
         - mlflow
         - backend
-    depends_on:
-      db_mysql:
-        condition: service_healthy
-      mlflow_postgresql:
-        condition: service_healthy   
 
 

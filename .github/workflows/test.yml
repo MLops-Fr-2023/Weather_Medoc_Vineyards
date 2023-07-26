@@ -5,18 +5,12 @@ on:
     branches:
       - main
       - develop
-      - develop_gh_actions
-      - 20231807_JLE_GH_ACTIONS
 
 jobs:
-  test:
-    name: Run Pytest
+  test_python_3_10:
+    name: Run Pytest (Python 3.10.11)
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        python-version: [3.8, 3.9]
-
+    
     env:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       ALGORITHM: ${{ secrets.ALGORITHM }}
@@ -61,10 +55,10 @@ jobs:
 
 
     steps:
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.10.11
         uses: actions/setup-python@v3
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.10.11
 
       - name: Checkout code
         uses: actions/checkout@v3
