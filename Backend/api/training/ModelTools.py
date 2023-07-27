@@ -69,7 +69,7 @@ class Tools():
         df.drop(Tools.columns_drop, inplace = True, axis = 1)   
         return df
     
-    def get_chart(results_df, df, varlist, predlist):
+    def get_chart(df, varlist, predlist):
         fig, axes = plt.subplots(3, 3, figsize=(12, 9)) # créé une grille 3x3 de subplots
         axes = axes.ravel() # convertit le tableau 2D en 1D pour faciliter l'itération
 
@@ -80,6 +80,14 @@ class Tools():
 
         fig.savefig("predictions.png")
         plt.close(fig)
+
+        for i in range(9):  # boucle sur les 9 subplots
+            fig, ax = plt.subplots(figsize = (10,5))
+            ax.plot(varlist[i]) # trace les données réelles
+            ax.plot(predlist[i]) # trace les prédictions
+            ax.set_title(df.columns[i+1], fontsize=10) # met à jour le titre du subplot
+            fig.savefig(str(df.columns[i+1])+".png")
+            plt.close(fig)
     
     def get_var_data(y, fcst_horizon):
         dim_var = (int(y.shape[0]/fcst_horizon) + 1)
@@ -190,12 +198,13 @@ class Tools():
                 predlist = Tools.get_var_data(y_test_preds, hyper_params.fcst_horizon)
                 results_df = Tools.get_results(df, varlist, predlist)
                 all_metrics = Tools.get_all_metrics(results_df)  
-                Tools.get_chart(results_df, df, varlist, predlist)
+                Tools.get_chart(df, varlist, predlist)
 
                 logging.info(f"Training performed with hyperparams : {hyper_params}")
 
                 # fetch the auto logged parameters and metrics
-                mlflow.log_param("architecture", hyper_params.arch_config)
+                for params in hyper_params.arch_config:
+                    mlflow.log_param(params[0], params[1])
                 mlflow.log_param("batch size", hyper_params.batch_size)
                 mlflow.log_param("epochs number", hyper_params.n_epochs)
                 mlflow.log_param("fcst_history", hyper_params.fcst_history)
@@ -204,6 +213,19 @@ class Tools():
 
                 mlflow.log_metrics(all_metrics)
 
+                arch = pd.DataFrame(index=[0])
+                for params in hyper_params.arch_config:
+                    arch.insert(0,params[0],params[1])
+                arch.insert(0,"batch_size", hyper_params.batch_size)
+                arch.insert(0,"epochs number", hyper_params.n_epochs)
+                arch.insert(0,"fcst_history", hyper_params.fcst_history)
+                arch.insert(0,"fcst_horizon", hyper_params.fcst_horizon)
+                arch.insert(0,"learning rate", lr_max)
+                arch.to_csv("hyper_parameters.csv")
+                print(arch)
+                mlflow.log_artifact("hyper_parameters.csv")
+                for signal_name in df.columns[1:]:
+                    mlflow.log_artifact(str(signal_name)+".png")
                 mlflow.log_artifact("predictions.png")
                 results_df.reset_index(inplace=True)
                 results_df.to_csv('scores.csv',index=True)
