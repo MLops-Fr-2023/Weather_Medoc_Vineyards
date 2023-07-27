@@ -2,7 +2,6 @@ from datetime import timedelta
 from fastapi.testclient import TestClient
 from main import app
 from security import authent
-from db_access.DbCnx import UserDao
 import pytest
 
 
@@ -166,7 +165,7 @@ def user_permission_false_user():
         'permission_id' : 'forecast'
     }
 
-@pytest.fixture(params=["Arsac", "Ludon-Medoc", "Lamarque", "Castelnau-de-Medoc", "Macau", "Soussan", "Margaux"])
+@pytest.fixture(params=["Arsac", "Ludon-Medoc", "Lamarque, FR", "Macau, FR","Castelnau-de-Medoc", "Soussan", "Margaux"])
 def city_name(request):
     return request.param
 
@@ -390,18 +389,33 @@ def test_update_weather_data(api_client, auth_headers_test, auth_headers_admax):
     assert response.status_code == HttpCodes.success
 
 
-def test_forecast_city(api_client, city_name, auth_headers_test, auth_headers_external_client):
+def test_forecast_city(api_client, city_name, auth_headers_test, auth_headers_admax):
     
     # Not authenticated
-    response = api_client.post(f"/forecast_city/{city_name}")
+    response = api_client.post("/forecast_city/{city}?name_city="+str(city_name))
     assert response.status_code == HttpCodes.not_authenticated
 
     # Authenticated without permission
-    response = api_client.post(f"/forecast_city/{city_name}", headers=auth_headers_test)
+    response = api_client.post("/forecast_city/{city}?name_city="+str(city_name), headers=auth_headers_test)
     assert response.status_code == HttpCodes.access_refused
 
     # Authenticated with permission
-    response = api_client.post(f"/forecast_city/{city_name}", headers=auth_headers_external_client)
+    response = api_client.post('/forecast_city/{city}?name_city='+str(city_name), headers=auth_headers_admax)
+    print(response)
+    assert response.status_code == HttpCodes.success
+
+def test_forecast_data(api_client, city_name, auth_headers_test, auth_headers_external_client):
+   
+    # Not authenticated
+    response = api_client.get("/forecast_data/?name_city="+str(city_name))
+    assert response.status_code == HttpCodes.not_authenticated
+
+    # Authenticated without permission
+    response = api_client.get("/forecast_data/?name_city="+str(city_name), headers=auth_headers_test)
+    assert response.status_code == HttpCodes.success
+
+    # Authenticated with permission
+    response = api_client.get("/forecast_data/?name_city="+str(city_name), headers=auth_headers_external_client)
     assert response.status_code == HttpCodes.success
 
 
@@ -417,4 +431,18 @@ def test_delete_weather_data(api_client, auth_headers_test, auth_headers_admax):
 
     # Authenticated with permission
     response = api_client.post("/delete_weather_data", headers=auth_headers_admax)
+    assert response.status_code == HttpCodes.success
+
+def test_delete_forecast_data(api_client, auth_headers_test, auth_headers_admax):
+
+    # Not authenticated
+    response = api_client.post("/delete_forecast_data")
+    assert response.status_code == HttpCodes.not_authenticated
+
+    # Authenticated without permission
+    response = api_client.post("/delete_forecast_data", headers=auth_headers_test)
+    assert response.status_code == HttpCodes.access_refused
+
+    # Authenticated with permission
+    response = api_client.post("/delete_forecast_data", headers=auth_headers_admax)
     assert response.status_code == HttpCodes.success

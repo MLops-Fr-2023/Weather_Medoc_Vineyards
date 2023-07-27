@@ -158,7 +158,9 @@ class Tools():
             # preds_df = learn.inverse_transform(preds_df)
 
             df_total_pred= pd.concat([save_new_df, preds_df], ignore_index = True)
-
+            preds_df['city'] = city
+            UserDao.send_forecast_data_from_df_to_db(preds_df)
+            
             return {KeyReturn.success.value: df_total_pred}
         
         except Exception as e:
