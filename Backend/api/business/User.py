@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, date
 
+
 class User(BaseModel):
     user_id: str
     pwd_hash: Optional[str] = None
@@ -9,15 +10,16 @@ class User(BaseModel):
     lastname: Optional[str] = None
     user_email: Optional[str] = None
     position: Optional[str] = None
-    create_date: Optional[date] =  datetime.now().strftime("%Y-%m-%d")
+    create_date: Optional[date] = datetime.now().strftime("%Y-%m-%d")
     last_upd_date: Optional[date] = datetime.now().strftime("%Y-%m-%d")
     active: Optional[int] = 1
     permissions: Optional[list[str]] = []
 
+
 class UserInDB(User, BaseModel):
     pwd_hash: str
 
-    
+
 class UserAdd(BaseModel):
     user_id: str
     pwd_hash: Optional[str] = None

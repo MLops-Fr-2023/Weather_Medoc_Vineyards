@@ -2,9 +2,7 @@ from datetime import timedelta
 from fastapi.testclient import TestClient
 from main import app
 from security import authent
-from db_access.DbCnx import UserDao
 import pytest
-
 
 
 class HttpCodes():
@@ -14,7 +12,7 @@ class HttpCodes():
     access_refused = 403
 
 
-######### FIXTURES #######
+# FIXTURES ###############
 
 @pytest.fixture
 def api_client():
@@ -29,6 +27,7 @@ def access_token_test():
     access_token = authent.create_access_token(data=data, expires_delta=expires_delta)
     return access_token
 
+
 @pytest.fixture
 def access_token_admax():
     user_id = 'admax'
@@ -36,6 +35,7 @@ def access_token_admax():
     expires_delta = timedelta(minutes=15)
     access_token = authent.create_access_token(data=data, expires_delta=expires_delta)
     return access_token
+
 
 @pytest.fixture
 def access_token_external_client():
@@ -45,17 +45,21 @@ def access_token_external_client():
     access_token = authent.create_access_token(data=data, expires_delta=expires_delta)
     return access_token
 
+
 @pytest.fixture
 def auth_headers_test(access_token_test):
     return {'accept': 'application/json', "Authorization": f"Bearer {access_token_test}"}
+
 
 @pytest.fixture
 def auth_headers_admax(access_token_admax):
     return {'accept': 'application/json', "Authorization": f"Bearer {access_token_admax}"}
 
+
 @pytest.fixture
 def auth_headers_external_client(access_token_external_client):
     return {'accept': 'application/json', "Authorization": f"Bearer {access_token_external_client}"}
+
 
 # Create a fixture for root user credentials
 @pytest.fixture
@@ -65,6 +69,7 @@ def root_user_credentials():
         "password": "XXXXX"
     }
 
+
 # Create a fixture for test user credentials
 @pytest.fixture
 def test_user_credentials():
@@ -72,6 +77,7 @@ def test_user_credentials():
         "username": "test",
         "password": "XXXXX"
     }
+
 
 # Create a fixture user to add
 @pytest.fixture
@@ -86,6 +92,7 @@ def user_add():
         'active': 1
     }
 
+
 # Create a fixture user to edit
 @pytest.fixture
 def user_edit():
@@ -99,10 +106,11 @@ def user_edit():
         'active': 1
     }
 
+
 # Create a fixture user to edit_false
 @pytest.fixture
 def user_edit_false():
-    return  {
+    return {
         'user_id': 'test_user_false',
         'pwd_hash': 'test_password_edit',
         'firstname': 'test_firstname_edit',
@@ -112,10 +120,11 @@ def user_edit_false():
         'active': 1
     }
 
+
 # Create a fixture user admax to edit
 @pytest.fixture
 def user_edit_admax():
-    return  {
+    return {
         'user_id': 'admax',
         'pwd_hash': 'test_password_edit',
         'firstname': 'test_firstname_edit',
@@ -128,9 +137,10 @@ def user_edit_admax():
 
 @pytest.fixture
 def user_id_test():
-    return  {
+    return {
         'user_id': 'test_user'
     }
+
 
 @pytest.fixture
 def user_id_admax():
@@ -138,35 +148,41 @@ def user_id_admax():
         'user_id': 'admax'
     }
 
+
 @pytest.fixture
 def user_permission():
-    return  {
+    return {
         'user_id': 'test',
-        'permission_id' : 'get_data'
+        'permission_id': 'get_data'
     }
+
 
 @pytest.fixture
 def user_permission_admax():
     return {
         'user_id': 'admax',
-        'permission_id' : 'forecast'
+        'permission_id': 'forecast'
     }
+
 
 @pytest.fixture
 def user_permission_false_permission():
-    return  {
+    return {
         'user_id': 'test',
-        'permission_id' : 'false'
+        'permission_id': 'false'
     }
+
 
 @pytest.fixture
 def user_permission_false_user():
     return {
         'user_id': 'false',
-        'permission_id' : 'forecast'
+        'permission_id': 'forecast'
     }
 
-@pytest.fixture(params=["Arsac", "Ludon-Medoc", "Lamarque", "Castelnau-de-Medoc", "Macau", "Soussan", "Margaux"])
+
+@pytest.fixture(params=["Arsac", "Ludon-Medoc", "Lamarque, FR", "Macau, FR",
+                        "Castelnau-de-Medoc", "Soussan", "Margaux"])
 def city_name(request):
     return request.param
 
@@ -176,7 +192,9 @@ def city_name(request):
 def test_read_root(api_client):
     response = api_client.get("/")
     assert response.status_code == 200
-    assert response.text == '"Welcome to the Joffrey LEMERY, Nicolas CARAYON and Jacques DROUVROY weather API (for places around Margaux-Cantenac)"'
+    msg = "Welcome to the Joffrey LEMERY, Nicolas CARAYON and Jacques DROUVROY "
+    msg += "weather API (for places around Margaux-Cantenac)"
+    assert response.text.strip("'").strip('"') == msg
 
 
 # Use the fixture in the test function
@@ -195,10 +213,10 @@ def test_read_users_me(api_client, root_user_credentials):
     assert response.status_code == HttpCodes.not_authenticated
     # Authenticated
     expires_delta = timedelta(minutes=15)
-    data = {"sub" : root_user_credentials["username"]}
+    data = {"sub": root_user_credentials["username"]}
     access_token = authent.create_access_token(data=data, expires_delta=expires_delta)
     headers = {'accept': 'application/json', "Authorization": f"Bearer {access_token}"}
-    response =api_client.get("/users/me/", headers=headers)
+    response = api_client.get("/users/me/", headers=headers)
     assert response.status_code == HttpCodes.success
     assert "user_id" in response.json()
     assert response.json()['user_id'] == 'admax'
@@ -220,7 +238,6 @@ def test_add_user(api_client, user_add, auth_headers_test, auth_headers_admax):
     # Authenticated with permission trying to add an already existing user_id
     response = api_client.post("/add_user", params=user_add, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.bad_request
-
 
 
 def test_edit_user(api_client, user_edit, user_edit_false, user_edit_admax, auth_headers_test, auth_headers_admax):
@@ -263,18 +280,19 @@ def test_delete_user(api_client, user_id_test, user_id_admax, auth_headers_test,
     response = api_client.post("/delete_user", params=user_id_test, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.success
 
-    # Authenticated with permission trying to delete non existing user    
+    # Authenticated with permission trying to delete non existing user
     response = api_client.post("/delete_user", params=user_id_test, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.bad_request
 
 
-def test_add_user_permission(api_client, user_permission, user_permission_admax, user_permission_false_user, user_permission_false_permission , auth_headers_test, auth_headers_admax):
+def test_add_user_permission(api_client, user_permission, user_permission_admax, user_permission_false_user,
+                             user_permission_false_permission, auth_headers_test, auth_headers_admax):
 
     # Not authenticated
     response = api_client.post("/add_user_permission", params=user_permission)
     assert response.status_code == HttpCodes.not_authenticated
 
-    # Authenticated without permission    
+    # Authenticated without permission
     response = api_client.post("/add_user_permission", params=user_permission, headers=auth_headers_test)
     assert response.status_code == HttpCodes.access_refused
 
@@ -282,66 +300,46 @@ def test_add_user_permission(api_client, user_permission, user_permission_admax,
     response = api_client.post("/add_user_permission", params=user_permission_admax, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.access_refused
 
-    # Authenticated with permission trying to add permission to a non existing user_id    
+    # Authenticated with permission trying to add permission to a non existing user_id
     response = api_client.post("/add_user_permission", params=user_permission_false_user, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.bad_request
 
-    # Authenticated with permission trying to add a non existing permission_id    
-    response = api_client.post("/add_user_permission", params=user_permission_false_permission, headers=auth_headers_admax)
+    # Authenticated with permission trying to add a non existing permission_id
+    response = api_client.post("/add_user_permission", params=user_permission_false_permission,
+                               headers=auth_headers_admax)
     assert response.status_code == HttpCodes.bad_request
 
-    # Authenticated with permission    
+    # Authenticated with permission
     response = api_client.post("/add_user_permission", params=user_permission, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.success
 
 
-def test_delete_user(api_client, user_id_test, user_id_admax, auth_headers_test, auth_headers_admax):
+def test_delete_user_permission(api_client, user_permission, user_permission_admax, user_permission_false_user,
+                                user_permission_false_permission, auth_headers_test, auth_headers_admax):
 
     # Not authenticated
-    response = api_client.post("/delete_user", params=user_id_test)
+    response = api_client.post("/delete_user_permission", params=user_permission)
     assert response.status_code == HttpCodes.not_authenticated
 
     # Authenticated without permission
-    response = api_client.post("/delete_user", params=user_id_test, headers=auth_headers_test)
-    assert response.status_code == HttpCodes.access_refused
-
-    # Authenticated with permission trying to delete non editable user "admax"
-    response = api_client.post("/delete_user", params=user_id_admax, headers=auth_headers_admax)
-    assert response.status_code == HttpCodes.access_refused
-
-    # Authenticated with permission deleting existing user   
-    response = api_client.post("/delete_user", params=user_id_test, headers=auth_headers_admax)
-    assert response.status_code == HttpCodes.success
-
-    # Authenticated with permission trying to delete non existing user
-    response = api_client.post("/delete_user", params=user_id_test, headers=auth_headers_admax)
-    assert response.status_code == HttpCodes.bad_request
-
-
-def test_delete_user_permission(api_client, user_permission, user_permission_admax, user_permission_false_user, user_permission_false_permission , auth_headers_test, auth_headers_admax):
-
-    # Not authenticated
-    response = api_client.post("/delete_user_permission", params = user_permission)
-    assert response.status_code == HttpCodes.not_authenticated
-
-    # Authenticated without permission
-    response = api_client.post("/delete_user_permission", params =  user_permission, headers=auth_headers_test)
+    response = api_client.post("/delete_user_permission", params=user_permission, headers=auth_headers_test)
     assert response.status_code == HttpCodes.access_refused
 
     # Authenticated with permission trying to delete permission to non editable user_id "admax"
-    response = api_client.post("/delete_user_permission", params = user_permission_admax, headers=auth_headers_admax)
+    response = api_client.post("/delete_user_permission", params=user_permission_admax, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.access_refused
 
-    # Authenticated with permission trying to delete permission to a non existing user_id    
-    response = api_client.post("/delete_user_permission", params = user_permission_false_user, headers=auth_headers_admax)
+    # Authenticated with permission trying to delete permission to a non existing user_id
+    response = api_client.post("/delete_user_permission", params=user_permission_false_user, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.bad_request
 
     # Authenticated with permission trying to delete non existing permission_id to user_id
-    response = api_client.post("/delete_user_permission", params = user_permission_false_permission, headers=auth_headers_admax)
+    response = api_client.post("/delete_user_permission", params=user_permission_false_permission,
+                               headers=auth_headers_admax)
     assert response.status_code == HttpCodes.bad_request
 
-    # Authenticated with permission delete existing permission_id to existing user_id   
-    response = api_client.post("/delete_user_permission", params = user_permission, headers=auth_headers_admax)
+    # Authenticated with permission delete existing permission_id to existing user_id
+    response = api_client.post("/delete_user_permission", params=user_permission, headers=auth_headers_admax)
     assert response.status_code == HttpCodes.success
 
 
@@ -390,18 +388,34 @@ def test_update_weather_data(api_client, auth_headers_test, auth_headers_admax):
     assert response.status_code == HttpCodes.success
 
 
-def test_forecast_city(api_client, city_name, auth_headers_test, auth_headers_external_client):
-    
+def test_forecast_city(api_client, city_name, auth_headers_test, auth_headers_admax):
+
     # Not authenticated
-    response = api_client.post(f"/forecast_city/{city_name}")
+    response = api_client.post("/forecast_city/{city}?name_city=" + str(city_name))
     assert response.status_code == HttpCodes.not_authenticated
 
     # Authenticated without permission
-    response = api_client.post(f"/forecast_city/{city_name}", headers=auth_headers_test)
+    response = api_client.post("/forecast_city/{city}?name_city=" + str(city_name), headers=auth_headers_test)
     assert response.status_code == HttpCodes.access_refused
 
     # Authenticated with permission
-    response = api_client.post(f"/forecast_city/{city_name}", headers=auth_headers_external_client)
+    response = api_client.post('/forecast_city/{city}?name_city=' + str(city_name), headers=auth_headers_admax)
+    print(response)
+    assert response.status_code == HttpCodes.success
+
+
+def test_forecast_data(api_client, city_name, auth_headers_test, auth_headers_external_client):
+
+    # Not authenticated
+    response = api_client.get("/forecast_data/?name_city=" + str(city_name))
+    assert response.status_code == HttpCodes.not_authenticated
+
+    # Authenticated without permission
+    response = api_client.get("/forecast_data/?name_city=" + str(city_name), headers=auth_headers_test)
+    assert response.status_code == HttpCodes.success
+
+    # Authenticated with permission
+    response = api_client.get("/forecast_data/?name_city=" + str(city_name), headers=auth_headers_external_client)
     assert response.status_code == HttpCodes.success
 
 
@@ -417,4 +431,19 @@ def test_delete_weather_data(api_client, auth_headers_test, auth_headers_admax):
 
     # Authenticated with permission
     response = api_client.post("/delete_weather_data", headers=auth_headers_admax)
+    assert response.status_code == HttpCodes.success
+
+
+def test_delete_forecast_data(api_client, auth_headers_test, auth_headers_admax):
+
+    # Not authenticated
+    response = api_client.post("/delete_forecast_data")
+    assert response.status_code == HttpCodes.not_authenticated
+
+    # Authenticated without permission
+    response = api_client.post("/delete_forecast_data", headers=auth_headers_test)
+    assert response.status_code == HttpCodes.access_refused
+
+    # Authenticated with permission
+    response = api_client.post("/delete_forecast_data", headers=auth_headers_admax)
     assert response.status_code == HttpCodes.success

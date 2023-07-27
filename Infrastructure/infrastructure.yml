@@ -446,6 +446,7 @@ Resources:
               Service: ec2.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
 
   S3FullAccessInstanceProfile:
@@ -454,30 +455,54 @@ Resources:
       Roles:
         - !Ref S3FullAccessRole
 
-# Launch Configuration
   PublicLaunchConfig: 
-      Type: AWS::AutoScaling::LaunchConfiguration
-      Properties:
-        AssociatePublicIpAddress:  True
-        ImageId: !Ref AmiIdentifierPublic
-        InstanceType: t3.large
-        SecurityGroups:
-          - !Ref PublicSecurityGroup
-        KeyName: JLE_pytorch_paris
-        IamInstanceProfile: !Ref S3FullAccessInstanceProfile
-
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: True
+      ImageId: !Ref AmiIdentifierPublic
+      InstanceType: t3.large
+      SecurityGroups:
+        - !Ref PublicSecurityGroup
+      KeyName: JLE_pytorch_paris
+      IamInstanceProfile: !Ref S3FullAccessInstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt-get update -y
+          pip install gdown
+          cd /home/ubuntu
+          git clone -b develop https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git
+          newgrp docker
+          cd /home/ubuntu/Weather_Medoc_Vineyards/Frontend
+          gdown --fuzzy https://drive.google.com/file/d/10KkDRJRlQ6D4neldUkMqNZG-S4AwOMDo/view?usp=sharing
+          mv -f env_frontend .env
+          ./run_docker_compose.sh
+          rm .env
 
   PrivateLaunchConfig: 
-      Type: AWS::AutoScaling::LaunchConfiguration
-      Properties:
-        AssociatePublicIpAddress:  False
-        ImageId: !Ref AmiIdentifierPrivate
-        InstanceType: t3.large
-        SecurityGroups:
-          - !Ref PrivateSecurityGroup
-        KeyName: JLE_pytorch_paris
-        IamInstanceProfile: !Ref S3FullAccessInstanceProfile
-
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      AssociatePublicIpAddress: True
+      ImageId: !Ref AmiIdentifierPrivate
+      InstanceType: t3.large
+      SecurityGroups:
+        - !Ref PrivateSecurityGroup
+      KeyName: JLE_pytorch_paris
+      IamInstanceProfile: !Ref S3FullAccessInstanceProfile
+      UserData:
+         Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          pip install gdown
+          cd /home/ubuntu
+          git clone https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git
+          newgrp docker
+          cd /home/ubuntu/Weather_Medoc_Vineyards/
+          git checkout 20230727_JLE_Infrastructure_UserData
+          cd /home/ubuntu/Weather_Medoc_Vineyards/Backend
+          gdown --fuzzy https://drive.google.com/file/d/1_-7Y9aggLWhYK9OFypb5ItSeEwqqw9EM/view?usp=sharing
+          mv -f env_backend .env
+          ./run_docker_compose.sh
+          rm .env
 
 #Scaling Group
   PubicScalingGroup:
@@ -573,7 +598,7 @@ Resources:
           - Type: forward
             TargetGroupArn: !Ref PrivateTargetGroup
 
-  # S3 BUCKET
+# S3 BUCKET
   bucket:
     Type: 'AWS::S3::Bucket'
     Properties:
@@ -608,7 +633,7 @@ Resources:
               - !Sub "arn:aws:s3:::${bucket}"
               - !Sub "arn:aws:s3:::${bucket}/*"
 
-  # VPC ENDPOINT FOR S3
+# VPC ENDPOINT FOR S3
   VpcEndpointS3:
     Type: 'AWS::EC2::VPCEndpoint'
     Properties:

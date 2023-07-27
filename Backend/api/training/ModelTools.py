@@ -10,51 +10,53 @@ from datetime import datetime
 from mlflow import MlflowClient
 from logger import LoggingConfig
 from db_access.DbCnx import UserDao
-from tsai.inference import load_learner
 from business.KeyReturn import KeyReturn
 from business.HyperParams import HyperParams
 from sklearn.metrics import mean_squared_error, mean_absolute_error
-from config.variables import VarEnvInferenceModel, S3LogHandler, S3VarAccess, VarEnvMLflow
+from config.variables import VarEnvInferenceModel, VarEnvMLflow
 
 if os.name == 'nt':
     temp = pathlib.PosixPath
     pathlib.PosixPath = pathlib.WindowsPath
-    
-#Import du logger
+
+# Import du logger
 LoggingConfig.setup_logging()
 
-#Import des variables
+# Import des variables
 varenv_inference_model = VarEnvInferenceModel()
 varenv_mlflow = VarEnvMLflow()
 
 client = MlflowClient()
 
+
 class Tools():
 
     fcst_history = int(varenv_inference_model.fcst_history)  # steps in the past
     fcst_horizon = int(varenv_inference_model.fcst_horizon)  # steps in the future
-    valid_size   = 0.2 # int or float indicating the size of the training set
-    test_size    = 0.1 # int or float indicating the size of the test set
+    valid_size = 0.2  # int or float indicating the size of the training set
+    test_size = 0.1  # int or float indicating the size of the test set
 
     datetime_col = "DATE"
     freq = '3H'
 
-    
-    columns_keep = ['TEMPERATURE','WIND_SPEED','WIND_DEGREE','PRESSURE','PRECIP','HUMIDITY','CLOUDCOVER','FEELSLIKE','UV_INDEX']
-    columns_drop = ['WIND_DIR','TIME','CITY','OBSERVATION_TIME','VISIBILITY', 'WEATHER_CODE']
-    
-    preproc_pipe = sklearn.pipeline.Pipeline([
-        ('shrinker', TSShrinkDataFrame()), # shrink dataframe memory usage
-        ('drop_duplicates', TSDropDuplicates(datetime_col=datetime_col)), # drop duplicate rows (if any)
-        ('add_mts', TSAddMissingTimestamps(datetime_col=datetime_col, freq=freq)), # add missing timestamps (if any)
-        ('fill_missing', TSFillMissing(columns=columns_keep, method='ffill', value=0)), # fill missing data (1st ffill. 2nd value=0)
-        ], 
-        verbose=True)
+    columns_keep = ['TEMPERATURE', 'WIND_SPEED', 'WIND_DEGREE', 'PRESSURE', 'PRECIP', 'HUMIDITY',
+                    'CLOUDCOVER', 'FEELSLIKE', 'UV_INDEX']
+    columns_drop = ['WIND_DIR', 'TIME', 'CITY', 'OBSERVATION_TIME', 'VISIBILITY', 'WEATHER_CODE']
 
-    exp_pipe = sklearn.pipeline.Pipeline([
-        ('scaler', TSStandardScaler(columns=columns_keep)), # standardize data using train_split
-        ], 
-        verbose=True)
+    preproc_pipe = sklearn.pipeline.Pipeline(
+        # shrink dataframe memory usage
+        [('shrinker', TSShrinkDataFrame()),
+         # drop duplicate rows (if any)
+         ('drop_duplicates', TSDropDuplicates(datetime_col=datetime_col)),
+         # add missing timestamps (if any)
+         ('add_mts', TSAddMissingTimestamps(datetime_col=datetime_col, freq=freq)),
+         # fill missing data (1st ffill. 2nd value=0)
+         ('fill_missing', TSFillMissing(columns=columns_keep, method='ffill', value=0)),
+         ], verbose=True)
+
+    exp_pipe = sklearn.pipeline.Pipeline(
+        # standardize data using train_split
+        [('scaler', TSStandardScaler(columns=columns_keep)), ], verbose=True)
 
     def transform_data(df, city):
         df.insert(0, 'DATE', df['OBSERVATION_TIME'].astype(str) + ' ' + df['TIME'].astype(str))
@@ -64,43 +66,43 @@ class Tools():
         df['DATE'] = pd.to_datetime(df['DATE'])
         df = df.sort_values(by=['DATE'])
         # reset index to be able to use split function
-        df.reset_index(drop = True, inplace = True)                     
+        df.reset_index(drop=True, inplace=True)
         # remove categorical columns
-        df.drop(Tools.columns_drop, inplace = True, axis = 1)   
+        df.drop(Tools.columns_drop, inplace=True, axis=1)
         return df
-    
-    def get_chart(df, varlist, predlist):
-        fig, axes = plt.subplots(3, 3, figsize=(12, 9)) # créé une grille 3x3 de subplots
-        axes = axes.ravel() # convertit le tableau 2D en 1D pour faciliter l'itération
 
-        for i in range(9): # boucle sur les 9 subplots
-            axes[i].plot(varlist[i]) # trace les données réelles
-            axes[i].plot(predlist[i]) # trace les prédictions
-            axes[i].set_title(df.columns[i+1], fontsize=10) # met à jour le titre du subplot
+    def get_chart(df, varlist, predlist):
+        fig, axes = plt.subplots(3, 3, figsize=(12, 9))  # créé une grille 3x3 de subplots
+        axes = axes.ravel()  # convertit le tableau 2D en 1D pour faciliter l'itération
+
+        for i in range(9):  # boucle sur les 9 subplots
+            axes[i].plot(varlist[i])  # trace les données réelles
+            axes[i].plot(predlist[i])  # trace les prédictions
+            axes[i].set_title(df.columns[i + 1], fontsize=10)  # met à jour le titre du subplot
 
         fig.savefig("predictions.png")
         plt.close(fig)
 
         for i in range(9):  # boucle sur les 9 subplots
-            fig, ax = plt.subplots(figsize = (10,5))
-            ax.plot(varlist[i]) # trace les données réelles
-            ax.plot(predlist[i]) # trace les prédictions
-            ax.set_title(df.columns[i+1], fontsize=10) # met à jour le titre du subplot
-            fig.savefig(str(df.columns[i+1])+".png")
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(varlist[i])  # trace les données réelles
+            ax.plot(predlist[i])  # trace les prédictions
+            ax.set_title(df.columns[i + 1], fontsize=10)  # met à jour le titre du subplot
+            fig.savefig(str(df.columns[i + 1]) + ".png")
             plt.close(fig)
-    
+
     def get_var_data(y, fcst_horizon):
-        dim_var = (int(y.shape[0]/fcst_horizon) + 1)
-        vars = [np.ones(dim_var) for _ in range(len(Tools.columns_keep))] # liste pour stocker les variables
+        dim_var = (int(y.shape[0] / fcst_horizon) + 1)
+        vars = [np.ones(dim_var) for _ in range(len(Tools.columns_keep))]  # liste pour stocker les variables
 
         j = 0
-        while j < (dim_var-fcst_horizon):
+        while j < (dim_var - fcst_horizon):
             y_part = y[j]
             y_part = y_part.flatten()
-            
-            for i in range(len(Tools.columns_keep)): 
-                vars[i][j:j+fcst_horizon] = y_part[fcst_horizon*i:fcst_horizon*(i+1)]
-            
+
+            for i in range(len(Tools.columns_keep)):
+                vars[i][j:j + fcst_horizon] = y_part[fcst_horizon * i:fcst_horizon * (i + 1)]
+
             j += fcst_horizon
 
         return vars
@@ -108,16 +110,16 @@ class Tools():
     def get_all_metrics(df):
         all_metrics = {}
         for name in df.index:
-            all_metrics[name+'_mse'] = float(df.loc[name,'mse'])
-            all_metrics[name+'_mae'] = float(df.loc[name,'mae'])
+            all_metrics[name + '_mse'] = float(df.loc[name, 'mse'])
+            all_metrics[name + '_mae'] = float(df.loc[name, 'mae'])
         return all_metrics
 
     def get_results(df, varlist, predlist):
         results_df = pd.DataFrame(columns=["mse", "mae"])
 
         for i in range(len(varlist)):
-            results_df.loc[df.columns[i+1], "mse"] = round(mean_squared_error(varlist[i], predlist[i]), 2)
-            results_df.loc[df.columns[i+1], "mae"] = round(mean_absolute_error(varlist[i], predlist[i]), 2)
+            results_df.loc[df.columns[i + 1], "mse"] = round(mean_squared_error(varlist[i], predlist[i]), 2)
+            results_df.loc[df.columns[i + 1], "mae"] = round(mean_absolute_error(varlist[i], predlist[i]), 2)
 
         return results_df
 
@@ -132,61 +134,78 @@ class Tools():
             df = pd.DataFrame(weather_dict)
             df = df.set_index('ID')
 
-            df_initial = Tools.transform_data(df,'Margaux')
+            df_initial = Tools.transform_data(df, 'Margaux')
             new_df = df_initial[df_initial['DATE'].isin(dates)]
-            new_df.reset_index(drop = True, inplace = True)
+            new_df.reset_index(drop=True, inplace=True)
             save_new_df = new_df
 
             # loading of model
-            model_uri = str(varenv_inference_model.s3_root) + str(varenv_inference_model.model_inference) + str(varenv_inference_model.path_artifact)
+            s3_root = str(varenv_inference_model.s3_root)
+            model_inference = str(varenv_inference_model.model_inference)
+            path_artifact = str(varenv_inference_model.path_artifact)
+            model_uri = f"{s3_root}{model_inference}{path_artifact}"
+
             learn = mlflow.fastai.load_model(model_uri=model_uri)
             print('model loaded')
-
 
             # todo : make this line work
             # new_df = learn.transform(new_df)
 
             # why y_vars=None ?
-            new_X, _ = prepare_forecasting_data(new_df, fcst_history=Tools.fcst_history, fcst_horizon=0, x_vars=Tools.columns_keep, y_vars=None)
+            new_X, _ = prepare_forecasting_data(new_df,
+                                                fcst_history=Tools.fcst_history,
+                                                fcst_horizon=0,
+                                                x_vars=Tools.columns_keep,
+                                                y_vars=None)
             new_scaled_preds, *_ = learn.get_X_preds(new_X)
 
-            new_scaled_preds = to_np(new_scaled_preds).swapaxes(1,2).reshape(-1, len(Tools.columns_keep))
-            dates = pd.date_range(start=fcst_date, periods=Tools.fcst_horizon + 1, freq= Tools.freq)[1:]
+            new_scaled_preds = to_np(new_scaled_preds).swapaxes(1, 2).reshape(-1, len(Tools.columns_keep))
+            dates = pd.date_range(start=fcst_date, periods=Tools.fcst_horizon + 1, freq=Tools.freq)[1:]
             preds_df = pd.DataFrame(dates, columns=[Tools.datetime_col])
             preds_df.loc[:, Tools.columns_keep] = new_scaled_preds
             # todo : make this line work
             # preds_df = learn.inverse_transform(preds_df)
 
-            df_total_pred= pd.concat([save_new_df, preds_df], ignore_index = True)
+            df_total_pred = pd.concat([save_new_df, preds_df], ignore_index=True)
+            preds_df['city'] = city
+            UserDao.send_forecast_data_from_df_to_db(preds_df)
 
             return {KeyReturn.success.value: df_total_pred}
-        
+
         except Exception as e:
             logging.error(f"Forecast failed : {e}")
-            return {'error': f"Forecast failed"}        
+            return {'error': "Forecast failed"}
 
     def train_model(city: str, hyper_params: HyperParams, train_label: str):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
-        df = UserDao.get_weather_data_df()  
+        df = UserDao.get_weather_data_df()
 
         # transform data
         df = Tools.transform_data(df, city)
 
-        try : 
+        try:
             with mlflow.start_run():
-                print(f"\n {train_label} \n")  
+                print(f"\n {train_label} \n")
 
-                splits = get_forecasting_splits(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon,
-                                                datetime_col=Tools.datetime_col, valid_size=Tools.valid_size, test_size=Tools.test_size, show_plot = False)
+                splits = get_forecasting_splits(df,
+                                                fcst_history=hyper_params.fcst_history,
+                                                fcst_horizon=hyper_params.fcst_horizon,
+                                                datetime_col=Tools.datetime_col,
+                                                valid_size=Tools.valid_size,
+                                                test_size=Tools.test_size,
+                                                show_plot=False)
 
+                X, y = prepare_forecasting_data(df,
+                                                fcst_history=hyper_params.fcst_history,
+                                                fcst_horizon=hyper_params.fcst_horizon,
+                                                x_vars=Tools.columns_keep,
+                                                y_vars=Tools.columns_keep)
 
-                X, y = prepare_forecasting_data(df, fcst_history=hyper_params.fcst_history, fcst_horizon=hyper_params.fcst_horizon,
-                                                x_vars=Tools.columns_keep, y_vars=Tools.columns_keep)
-
-                learn = TSForecaster(X, y, splits=splits, batch_size=hyper_params.batch_size, path='model_tsai', pipelines=[Tools.exp_pipe],
-                                arch="PatchTST", arch_config=vars(hyper_params.arch_config), metrics=[mse, mae])
+                learn = TSForecaster(X, y, splits=splits, batch_size=hyper_params.batch_size,
+                                     path='model_tsai', pipelines=[Tools.exp_pipe], arch="PatchTST",
+                                     arch_config=vars(hyper_params.arch_config), metrics=[mse, mae])
 
                 lr_max = 0.0025
                 learn.fit_one_cycle(hyper_params.n_epochs, lr_max=lr_max)
@@ -197,7 +216,7 @@ class Tools():
                 varlist = Tools.get_var_data(y_test, hyper_params.fcst_horizon)
                 predlist = Tools.get_var_data(y_test_preds, hyper_params.fcst_horizon)
                 results_df = Tools.get_results(df, varlist, predlist)
-                all_metrics = Tools.get_all_metrics(results_df)  
+                all_metrics = Tools.get_all_metrics(results_df)
                 Tools.get_chart(df, varlist, predlist)
 
                 logging.info(f"Training performed with hyperparams : {hyper_params}")
@@ -215,32 +234,33 @@ class Tools():
 
                 arch = pd.DataFrame(index=[0])
                 for params in hyper_params.arch_config:
-                    arch.insert(0,params[0],params[1])
-                arch.insert(0,"batch_size", hyper_params.batch_size)
-                arch.insert(0,"epochs number", hyper_params.n_epochs)
-                arch.insert(0,"fcst_history", hyper_params.fcst_history)
-                arch.insert(0,"fcst_horizon", hyper_params.fcst_horizon)
-                arch.insert(0,"learning rate", lr_max)
+                    arch.insert(0, params[0], params[1])
+                arch.insert(0, "batch_size", hyper_params.batch_size)
+                arch.insert(0, "epochs number", hyper_params.n_epochs)
+                arch.insert(0, "fcst_history", hyper_params.fcst_history)
+                arch.insert(0, "fcst_horizon", hyper_params.fcst_horizon)
+                arch.insert(0, "learning rate", lr_max)
                 arch.to_csv("hyper_parameters.csv")
                 print(arch)
                 mlflow.log_artifact("hyper_parameters.csv")
                 for signal_name in df.columns[1:]:
-                    mlflow.log_artifact(str(signal_name)+".png")
+                    mlflow.log_artifact(str(signal_name) + ".png")
                 mlflow.log_artifact("predictions.png")
                 results_df.reset_index(inplace=True)
-                results_df.to_csv('scores.csv',index=True)
+                results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
-                model_name = train_label +'-' +city
-                mlflow.fastai.log_model(fastai_learner = learn, registered_model_name = model_name,
-                                        artifact_path = "model")
+                model_name = train_label + '-' + city
+                mlflow.fastai.log_model(fastai_learner=learn,
+                                        registered_model_name=model_name,
+                                        artifact_path="model")
                 matplotlib.pyplot.close()
         except Exception as e:
-            return {KeyReturn.error.value: "Training failed : {e}"}
+            return {KeyReturn.error.value: f"Training failed : {e}"}
 
-        return {'success': f"Training '{train_label}' terminated - Hyperparamaters : {hyper_params}"}       
+        return {'success': f"Training '{train_label}' terminated - Hyperparamaters : {hyper_params}"}
 
-    def launch_trainings(city:str, hyper_params_dict, train_label:str):
+    def launch_trainings(city: str, hyper_params_dict, train_label: str):
         start_time = datetime.now()
         try:
             for hp_key in hyper_params_dict.keys():
@@ -248,38 +268,50 @@ class Tools():
                 Tools.train_model(city=city, hyper_params=data, train_label=train_label)
                 logging.error(f"Trained model successfully with hyperparameters : {data}")
 
-            total_time = datetime.now() - start_time        
+            total_time = datetime.now() - start_time
             return {KeyReturn.success.value: f"Trainings performed in {total_time}"}
         except Exception as e:
             logging.error(f"Trainings failed : {e}")
             return {KeyReturn.error.value: f"Trainings failed : {e}"}
-    
+
     def retrain(city: str, n_epochs: int):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
-        df = UserDao.get_weather_data_df()  
+        df = UserDao.get_weather_data_df()
 
         # transform data
         df = Tools.transform_data(df, city)
         print(df.head(3))
-        
-        try : 
+
+        try:
             with mlflow.start_run():
 
-                splits = get_forecasting_splits(df, fcst_history=Tools.fcst_history, fcst_horizon=Tools.fcst_horizon,
-                                                datetime_col=Tools.datetime_col, valid_size=Tools.valid_size, test_size=Tools.test_size, show_plot = False)
+                splits = get_forecasting_splits(df,
+                                                fcst_history=Tools.fcst_history,
+                                                fcst_horizon=Tools.fcst_horizon,
+                                                datetime_col=Tools.datetime_col,
+                                                valid_size=Tools.valid_size,
+                                                test_size=Tools.test_size,
+                                                show_plot=False)
 
-                X, y = prepare_forecasting_data(df, fcst_history=Tools.fcst_history, fcst_horizon=Tools.fcst_horizon,
-                                                x_vars=Tools.columns_keep, y_vars=Tools.columns_keep)
+                X, y = prepare_forecasting_data(df,
+                                                fcst_history=Tools.fcst_history,
+                                                fcst_horizon=Tools.fcst_horizon,
+                                                x_vars=Tools.columns_keep,
+                                                y_vars=Tools.columns_keep)
 
                 # loading of model
-                model_uri = str(varenv_inference_model.s3_root) + str(varenv_inference_model.model_inference) + str(varenv_inference_model.path_artifact)
+                s3_root = str(varenv_inference_model.s3_root)
+                model_inference = str(varenv_inference_model.model_inference)
+                path_artifact = str(varenv_inference_model.path_artifact)
+                model_uri = f"{s3_root}{model_inference}{path_artifact}"
+
                 learn = mlflow.fastai.load_model(model_uri=model_uri)
                 print('model loaded')
 
-                #lr_max = learn.lr_find().valley
-                lr_max=0.0025
+                # lr_max = learn.lr_find().valley
+                lr_max = 0.0025
                 learn.fit_one_cycle(n_epochs, lr_max=lr_max)
 
                 y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
@@ -289,7 +321,7 @@ class Tools():
                 varlist = Tools.get_var_data(y_test, Tools.fcst_horizon)
                 predlist = Tools.get_var_data(y_test_preds, Tools.fcst_horizon)
                 results_df = Tools.get_results(df, varlist, predlist)
-                all_metrics = Tools.get_all_metrics(results_df)  
+                all_metrics = Tools.get_all_metrics(results_df)
                 Tools.get_chart(results_df, df, varlist, predlist)
 
                 logging.info(f"Retraining performed with model : {varenv_inference_model.model_inference}")
@@ -298,12 +330,12 @@ class Tools():
 
                 mlflow.log_artifact("predictions.png")
                 results_df.reset_index(inplace=True)
-                results_df.to_csv('scores.csv',index=True)
+                results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
-                mlflow.fastai.log_model(fastai_learner = learn, artifact_path = "model")
+                mlflow.fastai.log_model(fastai_learner=learn, artifact_path="model")
                 matplotlib.pyplot.close()
         except Exception as e:
-            return {KeyReturn.error.value: "Training failed : {e}"}
+            return {KeyReturn.error.value: f"Training failed : {e}"}
 
-        return {'success': f"Retraining terminated with success"}     
+        return {'success': "Retraining terminated with success"}
