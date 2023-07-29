@@ -104,6 +104,11 @@ async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends(
 async def read_users_me(current_user: Annotated[User, Depends(authent.get_current_user)]):    
     return current_user
 
+@app.get("/forecast_data/", tags=['Clients'])
+async def forecast_data(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_user)]):    
+    result = UserDao.get_forecast_data_df(city = city.name_city)
+    return Handle_Result(result)
+
 @app.post("/add_user",  name='Add user', tags=['Administrators'])
 async def add_user(user_add : Annotated[UserAdd, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
  
@@ -261,6 +266,16 @@ async def delete_weather_data(current_user: Annotated[User, Depends(authent.get_
     result = UserDao.empty_weather_data()
     return Handle_Result(result)
 
+@app.post("/delete_forecast_data",  name='Delete all weather data from database', tags=['Backend'])
+async def delete_forecast_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+    """Empty table FORECAST_DATA """
+    
+    if not Permissions.Permissions.get_data.value in current_user.permissions:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+    
+    result = UserDao.empty_forecast_data()
+    return Handle_Result(result)
+
 @app.post("/forecast_city/{city}",  name='Forecast 7-days', tags=['Backend'])
 async def forecast(city: Annotated[City, Depends()], current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
@@ -299,7 +314,7 @@ async def train_models(city: Annotated[City, Depends()], train_label: str,
     return Handle_Result(result)
 
 @app.post("/retrain_model/{city}",  name='Launch a retraining of the model', tags=['Backend'])
-async def train_models(city: Annotated[City, Depends()],n_epochs: int,
+async def retrain_model(city: Annotated[City, Depends()],n_epochs: int,
                        current_user: Annotated[User, Depends(authent.get_current_active_user)]):
     """Launch a new train of current model on new data"""
 

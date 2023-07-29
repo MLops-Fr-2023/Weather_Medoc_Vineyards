@@ -1,5 +1,5 @@
 import requests
-from datetime import timedelta
+from datetime import timedelta, datetime
 from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.operators.python import PythonOperator
@@ -8,18 +8,26 @@ import os
 
 user_name = os.environ.get('API_USER')
 pwd = os.environ.get('API_PWD')
-# List of arguments to pass to the function
-cities = ["Arsac", "Ludon-Medoc", "Lamarque", "Castelnau-de-Medoc", "Macau", "Soussan", "Margaux"]
+
+cities = {
+    "Arsac": "Arsac", 
+    "Ludon-Medoc": "Ludon-Medoc", 
+    "Castelnau-de-Medoc": "Castelnau-de-Medoc",
+    "Soussan": "Soussan", 
+    "Margaux": "Margaux",
+    "Lamarque": "Lamarque, FR",
+    "Macau": "Macau, FR"
+    }
 
 my_dag = DAG(
     dag_id='fetch_weather_dag',
     tags=['project', 'MLOps', 'datascientest'],
     schedule_interval=timedelta(hours=3),
     default_args={
-        'start_date': days_ago(0)},
+        'start_date': datetime.now()},
     catchup=True)
 
-def fetch_weather_data():
+def get_token():
     print('get token')
     url_token = 'http://api:8000/token'
     headers = {
@@ -38,7 +46,10 @@ def fetch_weather_data():
     Variable.set(key = 'token_type', value = token_type)
     Variable.set(key = 'access_token', value = access_token)
 
+def fetch_weather_data():
     print('fetch_weather_data running')
+    token_type = Variable.get(key='token_type')
+    access_token = Variable.get(key='access_token')
     url = 'http://api:8000/update_weather_data'
     headers = {
     "accept": "application/json",
@@ -47,18 +58,37 @@ def fetch_weather_data():
 
     return 'fetch_weather_data terminated'
 
-
-def my_function(city):
-    print('forecast data')
+def delete_forecast_data():
+    print('delete forecast data')
     token_type = Variable.get(key='token_type')
     access_token = Variable.get(key='access_token')
-    url = 'http://api:8000/forecast_city/'+city
+    url = 'http://api:8000/delete_forecast_data/'
+    headers = {
+    "accept": "application/json",
+    "Authorization": f"{token_type} {access_token}"}
+    requests.post(url, headers=headers)
+
+    return 'Forecast data deleted'
+
+def forecast_data(city):
+    print('forecast data '+str(city))
+    token_type = Variable.get(key='token_type')
+    access_token = Variable.get(key='access_token')
+    url = 'http://api:8000/forecast_city/{city}?name_city='+str(city)
+    print(url)
     headers = {
     "accept": "application/json",
     "Authorization": f"{token_type} {access_token}"}
     requests.post(url, headers=headers)
 
     return f'process_raw_data terminated for {city}'
+
+
+get_token = PythonOperator(
+    task_id='get_token',
+    python_callable=get_token,
+    dag=my_dag,
+    doc="""use api root token to have it""")
 
 fetch_weather_data = PythonOperator(
     task_id='fetch_weather_data',
@@ -67,13 +97,19 @@ fetch_weather_data = PythonOperator(
     doc="""use api root token to have it
             use api root to  update data""")
 
+delete_forecast_data = PythonOperator(
+    task_id='delete_forecast_data',
+    python_callable=delete_forecast_data,
+    dag=my_dag,
+    doc="""use api root to delete forecast data""")
 
 # Define the tasks to call the function with different arguments
-for city in cities:
+for city_key, city_value in cities.items():
     task = PythonOperator(
-        task_id=f'Forecast_for_{city}',
-        python_callable=my_function,
-        op_args=[city],  # Pass the city as a list
+        task_id=f"Forecast_for_{city_key}",
+        python_callable=forecast_data,
+        op_args=[city_value],  # Pass the city value as a list
         dag=my_dag)
-    
-    fetch_weather_data >> task
+        
+    get_token >> [fetch_weather_data, delete_forecast_data] >> task
+

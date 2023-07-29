@@ -40,7 +40,7 @@ FORECAST_ENDPOINT = os.environ.get('FORECAST_CITY')
 ALLOWED_CITIES_STRING = os.environ.get('ALLOWED_CITIES')
 
 if ALLOWED_CITIES_STRING:
-   ALLOWED_CITIES = ALLOWED_CITIES_STRING.split(",")
+   ALLOWED_CITIES = ALLOWED_CITIES_STRING.split(";")
 
 ##############################
 
@@ -73,7 +73,8 @@ def get_jwt_token(username, password):
 def call_forecast_api(jwt_token, city):
     headers = {"Authorization": f"Bearer {jwt_token}"}
     url = f"{API_BASE_URL}{FORECAST_ENDPOINT}{city}"
-    response = requests.post(url, headers=headers)
+   # url = 'http://api:8000//forecast_data/?name_city='+str(city)
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
     elif response.status_code == 401:
@@ -91,7 +92,7 @@ def get_dataframe(df):
 def plot_forecast_data(forecast_data):
     # Convert forecast_data to DataFrame
     df = pd.DataFrame(get_dataframe(forecast_data))
-
+    df = df.sort_values(by= ['DATE'], ascending=True)
     # Get the time index
     time_index = pd.to_datetime(df['DATE'])
 
