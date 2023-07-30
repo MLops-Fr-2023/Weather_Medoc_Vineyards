@@ -5,9 +5,9 @@ import requests
 import os
 import s3fs
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
-######## CONFIGURATION #######
+# CONFIGURATION ##############
 
 st.set_page_config(
     page_title="Hello Vineyard operator",
@@ -26,11 +26,8 @@ div.stButton > button:hover {
     }
 </style>""", unsafe_allow_html=True)
 
-##############################
 
-
-
-########## VARIABLES #########
+# VARIABLES ##################
 
 fs = s3fs.S3FileSystem(anon=False)
 image_path_images = os.environ.get("IMAGE_PATH_IMAGES")
@@ -40,15 +37,12 @@ FORECAST_ENDPOINT = os.environ.get('FORECAST_CITY')
 ALLOWED_CITIES_STRING = os.environ.get('ALLOWED_CITIES')
 
 if ALLOWED_CITIES_STRING:
-   ALLOWED_CITIES = ALLOWED_CITIES_STRING.split(";")
+    ALLOWED_CITIES = ALLOWED_CITIES_STRING.split(";")
 
 ##############################
 
+# FUNCTIONS ##################
 
-
-
-
-########## FUNCTIONS #########
 
 @st.cache_data(ttl=600)
 def read_image_bucket(filename):
@@ -73,7 +67,6 @@ def get_jwt_token(username, password):
 def call_forecast_api(jwt_token, city):
     headers = {"Authorization": f"Bearer {jwt_token}"}
     url = f"{API_BASE_URL}{FORECAST_ENDPOINT}{city}"
-   # url = 'http://api:8000//forecast_data/?name_city='+str(city)
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
@@ -84,15 +77,17 @@ def call_forecast_api(jwt_token, city):
         st.write(response.text)
     return None
 
+
 def get_dataframe(df):
-    df=df['success']
+    df = df['success']
     return df
+
 
 # Function to plot the forecast data
 def plot_forecast_data(forecast_data):
     # Convert forecast_data to DataFrame
     df = pd.DataFrame(get_dataframe(forecast_data))
-    df = df.sort_values(by= ['DATE'], ascending=True)
+    df = df.sort_values(by=['DATE'], ascending=True)
     # Get the time index
     time_index = pd.to_datetime(df['DATE'])
 
@@ -106,6 +101,7 @@ def plot_forecast_data(forecast_data):
         plt.title(signal_name)
         st.pyplot(plt)
 
+
 # Function to print the dataframe for details
 def show_dataframe_details(dataframe):
     st.dataframe(get_dataframe(dataframe))
@@ -117,8 +113,9 @@ def main():
     st.title(":violet[Weather Prediction]")
     st.subheader("Credentials")
     st.write("""
-Please enter your credentials and choose the city to test our IA application.           
-The token is usable for 2 hours""")
+             Please enter your credentials and choose the city to test our IA application.
+             The token is usable for 2 hours
+             """)
 
     username = st.text_input("Username:")
     password = st.text_input("Password:", type="password")
@@ -128,9 +125,7 @@ The token is usable for 2 hours""")
             jwt_token = get_jwt_token(username, password)
             if jwt_token:
                 st.success("JWT Token successfully obtained!")
-#                st.write(f"Your JWT Token: {jwt_token}")
                 st.session_state.jwt_token = jwt_token
-
         else:
             st.warning("Please enter correct username and password.")
 
@@ -160,23 +155,22 @@ The token is usable for 2 hours""")
             st.warning("Please obtain the JWT token first.")
 
 
-
-
-
 ##############################
 
 if __name__ == "__main__":
     main()
 
 
-########### SIDEBAR ##########
+# SIDEBAR ####################
 
 with st.sidebar:
     with st.expander("Joffrey Lemery"):
-        col1, col2, col3 = st.columns([1,0.5,1])  
-        with col1: 
-            st.image(read_image_bucket( image_path_images + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
-            st.image(read_image_bucket( image_path_images + 'github_blank.png'),channels="RGB", output_format="auto")
+        col1, col2, col3 = st.columns([1, 0.5, 1])
+        with col1:
+            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
+                     channels="RGB", output_format="auto")
+            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
+                     channels="RGB", output_format="auto")
         with col3:
             st.write("")
             st.write("")
@@ -186,13 +180,14 @@ with st.sidebar:
             st.write("")
             st.write("")
             st.write("[GitHub](https://github.com/JoffreyLemery)")
-            
-    
+
     with st.expander("Nicolas Carayon"):
-        col1, col2, col3 = st.columns([1,0.5,1])  
-        with col1: 
-            st.image(read_image_bucket( image_path_images + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
-            st.image(read_image_bucket( image_path_images + 'github_blank.png'),channels="RGB", output_format="auto")
+        col1, col2, col3 = st.columns([1, 0.5, 1])
+        with col1:
+            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
+                     channels="RGB", output_format="auto")
+            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
+                     channels="RGB", output_format="auto")
         with col3:
             st.write("")
             st.write("")
@@ -204,11 +199,13 @@ with st.sidebar:
             st.write("[GitHub](https://github.com/nicolascarayon/)")
 
     with st.expander("Jacques Douvroy"):
-        col1, col2, col3 = st.columns([1,0.5,1])  
-        with col1: 
-            st.image(read_image_bucket( image_path_images + 'LinkedIn_Logo_blank.png'),channels="RGB", output_format="auto") 
-            st.image(read_image_bucket( image_path_images + 'github_blank.png'),channels="RGB", output_format="auto")
-        with col3:            
+        col1, col2, col3 = st.columns([1, 0.5, 1])
+        with col1:
+            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
+                     channels="RGB", output_format="auto")
+            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
+                     channels="RGB", output_format="auto")
+        with col3:
             st.write("")
             st.write("")
             st.write("[Linkedin](https://www.linkedin.com/in/jacques-drouvroy-65044765/)")
