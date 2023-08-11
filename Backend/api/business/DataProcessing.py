@@ -72,7 +72,7 @@ class UserDataProc():
 
         for city in cities:
             df_historical = pd.DataFrame(columns=columns)
-
+            nb_days = 59
             # date_start <- the day after the last date in WEATHER_DATA
             date_start = UserDao.get_last_date_weather(city)
             if date_start is None:
@@ -83,43 +83,51 @@ class UserDataProc():
             if date_start.strftime('%Y-%m-%d') == datetime.date.today().strftime('%Y-%m-%d'):
                 return {KeyReturn.success.value: "Data already up to date"}
 
-            date_start = date_start + timedelta(days=1)
-            date_start = date_start.strftime('%Y-%m-%d')
-            # date_end <- today
+            date_start = (date_start + timedelta(days=1)).date()
             date_end = datetime.date.today()
-            date_end = date_end.strftime('%Y-%m-%d')
 
-            params = {
-                'access_key': varenv_weather_api.weather_api_key,
-                'query': city,
-                'historical_date_start': date_start,
-                'historical_date_end': date_end,
-                'hourly': '1',
-                'interval': '3'
-            }
+            delta_days = (date_end - date_start).days
 
-            response = requests.get(UserDataProc.url_historical, params)
-            response_historical = response.json()
+            for i in range(0, delta_days, nb_days):  # loop over each 60-day period
 
-            df_temp = pd.DataFrame.from_dict(response_historical).transpose()
-            df_temp = df_temp.drop(['request', 'location', 'current'], axis=0)
-            df_temp = df_temp.drop(df_temp.columns[0:29], axis=1)
-            df_temp = df_temp.transpose()
-            for j in range(df_temp.shape[0]):
-                df_int = df_temp.iloc[j]
-                date_int = df_int['historical']['date']
-                hourly_int = df_int['historical']['hourly']
+                date_start_period = date_start + timedelta(days=i)
+                date_end_period = min(date_start_period + timedelta(days=nb_days), date_end)
 
-                for k in range(len(hourly_int)):
-                    df_historical_temp = pd.DataFrame(columns=columns)
-                    df_calcul = pd.DataFrame(hourly_int[k])
-                    df_historical_temp = pd.concat([df_historical_temp, df_calcul], axis=0)
-                    df_historical_temp[columns[0]] = date_int
-                    df_historical_temp['city'] = city
-                    df_historical_temp = df_historical_temp[columns]
-                    df_historical = pd.concat([df_historical_temp, df_historical], axis=0)
+                date_start_period = date_start_period.strftime('%Y-%m-%d')
+                date_end_period = date_end_period.strftime('%Y-%m-%d')
+
+                params = {
+                    'access_key': varenv_weather_api.weather_api_key,
+                    'query': city,
+                    'historical_date_start': date_start_period,
+                    'historical_date_end': date_end_period,
+                    'hourly': '1',
+                    'interval': '3'
+                }
+
+                response = requests.get(UserDataProc.url_historical, params)
+                response_historical = response.json()
+
+                df_temp = pd.DataFrame.from_dict(response_historical).transpose()
+                df_temp = df_temp.drop(['request', 'location', 'current'], axis=0)
+                df_temp = df_temp.drop(df_temp.columns[0:29], axis=1)
+                df_temp = df_temp.transpose()
+                for j in range(df_temp.shape[0]):
+                    df_int = df_temp.iloc[j]
+                    date_int = df_int['historical']['date']
+                    hourly_int = df_int['historical']['hourly']
+
+                    for k in range(len(hourly_int)):
+                        df_historical_temp = pd.DataFrame(columns=columns)
+                        df_calcul = pd.DataFrame(hourly_int[k])
+                        df_historical_temp = pd.concat([df_historical_temp, df_calcul], axis=0)
+                        df_historical_temp[columns[0]] = date_int
+                        df_historical_temp['city'] = city
+                        df_historical_temp = df_historical_temp[columns]
+                        df_historical = pd.concat([df_historical_temp, df_historical], axis=0)
 
             # Conversion of Col time from xxxx in hh:mm
+            print(f"\n df_historical['time'] : {df_historical['time']} \n")
             df_historical['time'] = df_historical['time'].apply(lambda x: ':'.join((x[0:2], x[-2:]))
                                                                 if len(x) == 4 else ':'.join((x[0:1], x[-2:])))
 
