@@ -1,3 +1,4 @@
+import os
 import uvicorn
 from typing import Dict
 from fastapi import Body
@@ -30,7 +31,7 @@ origins = [
 
 app = FastAPI(
     title='Weather API - Château Margaux',
-    description="API for the weather forecasting around Château Margaux",
+    description="API for the weather forecasting around les Châteaux du Médoc",
     version="1.0.1",
     openapi_tags=[
         {
@@ -245,6 +246,19 @@ async def get_logs(current_user: Annotated[User, Depends(authent.get_current_act
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
     return UserDao.get_logs()
+
+
+@app.get("/db_env", name='Get database environment info', tags=['Administrators'])
+def get_db_info(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+
+    if current_user.user_id != SpecialUsersID.administrator.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
+
+    return {
+        "DB_MYSQL_HOST": os.getenv('DB_MYSQL_HOST'),
+        "MYSQL_DATABASE": os.getenv('MYSQL_DATABASE'),
+        "DB_MYSQL_USER": os.getenv('DB_MYSQL_USER'),
+    }
 
 
 @app.post("/populate_weather_table", name='Populate wheather table with historical data from Weather API',
