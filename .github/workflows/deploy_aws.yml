@@ -1,7 +1,5 @@
 name: Deploy AWS CloudFormation Stack
-
 on: 
-  # Allow to run workflow manually
   workflow_dispatch
 
 jobs:
