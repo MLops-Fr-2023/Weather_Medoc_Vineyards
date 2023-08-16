@@ -1,6 +1,11 @@
 name: Deploy AWS CloudFormation Stack
 on: 
-  workflow_dispatch
+  workflow_dispatch:
+    inputs:
+      Environment:
+        description: Environment (PRD/TST)
+        type: string
+        required: true
 
 jobs:
   deploy:
