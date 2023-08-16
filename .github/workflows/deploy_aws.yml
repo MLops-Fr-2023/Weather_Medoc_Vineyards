@@ -1,0 +1,33 @@
+name: Deploy AWS CloudFormation Stack
+
+on: 
+  # Allow to run workflow manually
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+
+    - name: Deploy CloudFormation Stack
+      run: |
+        aws cloudformation deploy \
+          --template-file Infrastructure/infrastructure.yml \
+          --stack-name wmv-stack \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --parameter-overrides \
+          FileEnvPrdBack=${{ secrets.FILE_ENV_PRD_BACK }} \
+          FileEnvPrdFront=${{ secrets.FILE_ENV_PRD_FRONT }}
+
+          
+
+
