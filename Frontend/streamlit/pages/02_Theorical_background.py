@@ -585,7 +585,7 @@ with st.sidebar:
             st.write("")
             st.write("[GitHub](https://github.com/nicolascarayon/)")
 
-    with st.expander("Jacques Douvroy"):
+    with st.expander("Jacques Drouvroy"):
         col1, col2, col3 = st.columns([1, 0.5, 1])
         with col1:
             st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),

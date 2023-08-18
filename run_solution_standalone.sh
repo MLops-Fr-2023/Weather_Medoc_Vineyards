@@ -12,6 +12,7 @@ docker network create outside
 
 # Build and start Backend containers
 cd Backend
+source ./init_path_vars.sh
 source ./.env
 docker-compose build
 docker-compose up -d
@@ -19,6 +20,7 @@ cd ..
 
 # Build and start Frontend containers
 cd Frontend
+source ./init_path_vars.sh
 source ./.env
 docker-compose build
 docker-compose up -d

@@ -482,8 +482,11 @@ class UserDao():
     def get_forecast_data_df(city: str):
         forecast_dict = UserDao.get_forecast_data(city)
         df = pd.DataFrame(forecast_dict)
-        df.drop('ID', axis=1, inplace=True)
-        return {KeyReturn.success.value: df}
+        if df.empty:
+            return {KeyReturn.error.value: f"No forecast data for city {city}"}
+        else:
+            df.drop('ID', axis=1, inplace=True)
+            return {KeyReturn.success.value: df}
 
     @staticmethod
     def send_weather_data_from_df_to_db(df):
