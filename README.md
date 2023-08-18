@@ -72,7 +72,7 @@ cd Backend
 
 ## Presentation
 
-In this project you will find an AWS folder in order to run your application according to the IaS (Infrastructure as Code)
+In this project you will find an AWS folder in order to run your application according to the IaaS (Infrastructure as a Service)
 The folder contains :
 - The infrastructure.yml file which must be used with CloudFormation
 - The VM_setup.sh to set up a VM (Docker, Kubernetes, Git, AWS CLI)
