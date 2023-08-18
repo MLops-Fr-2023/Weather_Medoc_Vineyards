@@ -13,7 +13,7 @@ You will perhaps need to give permissions to execute the scripts with the follow
 
 The services are reachable with the following url : 
 - **API** : http://localhost:8000/docs
-- **Airflow** : http://localhost:8080/ (login : Admax, password : XXXXX)
+- **Airflow** : http://localhost:8080/
 - **Mlflow** : http://localhost:5001/
 - **Flower** : http://localhost:9001/
 
