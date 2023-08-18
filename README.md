@@ -1,19 +1,35 @@
-# Weather_Medoc_Vineyards
-An application to help owners of vineyards in Margaux mitigate the effects of climate risks
+# Weather Medoc Vineyards
+The application to assist vineyard owners in Médoc (France) with mitigating the effects of climate risks
 
-### Launch the services
+## Quick start (standalone installation)
+- Install and launch Docker-Desktop
+- Clone the repository
+- From the root of the repository run the following command line :
+`./run_solution_standalone.sh`
+
+You will perhaps need to give permissions to execute the scripts with the following command line:
+
+`chmod +x run_solution_standalone.sh stop_and_clean_solution.sh`
+
+The services are reachable with the following url : 
+- **API** : http://localhost:8000/docs
+- **Airflow** : http://localhost:8080/ (login : Admax, password : XXXXX)
+- **Mlflow** : http://localhost:5001/
+- **Flower** : http://localhost:9001/
+
+
+## Advanced start
+#### Launch Backend part
+From the folder *Backend* launch
+
+`$ bash run_docker_compose.sh`
 
 #### Optionnal full clean
 From the folder *Backend* launch
 
 `$ bash clean_docker.sh`
 
-#### Launch
-From the folder *Backend* launch
-
-`$ bash run_docker_compose.sh`
-
-### Execute the API tests : 
+#### Execute the API tests : 
 Once the services started, from the folder *Backend* launch
 
 `$ docker-compose -f docker-compose.test.yml  up --build`
@@ -125,6 +141,3 @@ NB_bis : Verify that the name you give to your bucket in the IaS is the same as 
 - Clone the repo : git@github.com:MLops-Fr-2023/Weather_Medoc_Vineyards.git
 - Modify 'bucket_folders.sh' according to the name of your bucket and launch with
     - sudo bash bucket_folders.sh
-
-
-
