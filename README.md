@@ -16,7 +16,7 @@ The services are reachable with the following url :
 - **Airflow** : http://localhost:8080/
 - **Mlflow** : http://localhost:5001/
 - **Flower** : http://localhost:9001/
-
+- **Streamlit** : http://localhost:8501/
 
 ## Advanced start
 #### Launch Backend part
