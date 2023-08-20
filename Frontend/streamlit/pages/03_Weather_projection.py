@@ -33,7 +33,7 @@ fs = s3fs.S3FileSystem(anon=False)
 image_path_images = os.environ.get("IMAGE_PATH_IMAGES")
 
 API_BASE_URL = os.environ.get('API_BASE_URL')
-FORECAST_ENDPOINT = os.environ.get('FORECAST_CITY')
+FORECAST_ENDPOINT = os.environ.get('FORECAST_DATA')
 ALLOWED_CITIES_STRING = os.environ.get('ALLOWED_CITIES')
 
 if ALLOWED_CITIES_STRING:
@@ -66,7 +66,7 @@ def get_jwt_token(username, password):
 
 def call_forecast_api(jwt_token, city):
     headers = {"Authorization": f"Bearer {jwt_token}"}
-    url = f"{API_BASE_URL}{FORECAST_ENDPOINT}{city}"
+    url = f"{API_BASE_URL}{FORECAST_ENDPOINT}?name_city=" + str(city)
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
@@ -198,7 +198,7 @@ with st.sidebar:
             st.write("")
             st.write("[GitHub](https://github.com/nicolascarayon/)")
 
-    with st.expander("Jacques Douvroy"):
+    with st.expander("Jacques Drouvroy"):
         col1, col2, col3 = st.columns([1, 0.5, 1])
         with col1:
             st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),

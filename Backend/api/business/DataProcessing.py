@@ -127,7 +127,6 @@ class UserDataProc():
                         df_historical = pd.concat([df_historical_temp, df_historical], axis=0)
 
             # Conversion of Col time from xxxx in hh:mm
-            print(f"\n df_historical['time'] : {df_historical['time']} \n")
             df_historical['time'] = df_historical['time'].apply(lambda x: ':'.join((x[0:2], x[-2:]))
                                                                 if len(x) == 4 else ':'.join((x[0:1], x[-2:])))
 
