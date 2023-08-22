@@ -1,135 +1,42 @@
-import streamlit as st
-from PIL import Image
-import base64
-import s3fs
 import os
+import streamlit as st
+import libs.tools as tools
 
-# CONFIGURATION ##############
+tools.set_page_config()
 
-st.set_page_config(
-    page_title="Hello Vineyard tenant",
-    page_icon="🍇",
-    layout="wide")
-
-##############################
+images_path = tools.get_images_path()
 
 
-# VARIABLES ##################
+def display_welcome_message():
+    st.markdown("""---""")
+    st.subheader("Here you are on the main page of our Vineyard Weather Forecast app!")
+    st.write("")
+    st.subheader("**Feel free to explore and use the capabilities of IA and transformers.**")
+    st.write(' ')
+    st.write(' ')
+    subheader_text = "Please feel free to thumbs up our "
+    github_url = "[github](https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards)"
+    st.subheader(f'{subheader_text}{github_url}')
+    st.markdown("""---""")
 
-fs = s3fs.S3FileSystem(anon=False)
-image_path_team = os.environ.get("IMAGE_PATH_TEAM")
-image_path_images = os.environ.get("IMAGE_PATH_IMAGES")
-
-##############################
-
-
-# FUNCTIONS ##################
-
-@st.cache_data(ttl=600)
-def read_image_bucket(filename):
-    return Image.open(fs.open(filename))
-
-
-@st.cache_data(ttl=600)
-def read_file(filename):
-    with fs.open(filename, 'rb') as f:
-        return f.read()
-
-##############################
-
-
-# TEXT  ######################
 
 def main():
-
-    c1, c2, c3 = st.columns([0.5, 2, 0.5])
+    c1, c2, c3 = st.columns([1, 4, 1])
     with c2:
-
         st.title('Welcome to :violet[Weather Forecast] 🍷')
         st.title(" ")
 
     with st.container():
-        col1, col2 = st.columns([1, 1])
-
+        col1, col2, col3 = st.columns([1, 4, 1])
         with col2:
-            st.markdown("""---""")
-            st.subheader("Here you are on the main page of our Vineyard Weather Forecast app!")
+            display_welcome_message()
 
-            st.write("")
-            st.subheader("**Feel free to explore and use the capabilities of IA and transformers.**")
-            st.write(' ')
-            st.write(' ')
-            subheader_text = "Please feel free to thumbs up our "
-            github_url = "[github](https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards)"
-            st.subheader(f'{subheader_text}{github_url}')
-            st.markdown("""---""")
-
-            col1, col2, col3 = st.columns(3)
-
-            with col2:
-                file_ = (image_path_images + "wine.gif")
-                contents = read_file(file_)
-                data_url = base64.b64encode(contents).decode("utf-8")
-                gif_base64 = f'data:image/gif;base64 , {data_url}'
-                st.markdown(f'<img src="{gif_base64}" alt="Wine bottle gif" width="400" height="300">',
-                            unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            st.image(images_path + "wine.gif", width=400)
 
 
 if __name__ == '__main__':
     main()
 
-# SIDEBAR ####################
-
-with st.sidebar:
-    with st.expander("Joffrey Lemery"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/joffrey-lemery-b740a5112/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/JoffreyLemery)")
-
-    with st.expander("Nicolas Carayon"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/nicolascarayon/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/nicolascarayon/)")
-
-    with st.expander("Jacques Douvroy"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/jacques-drouvroy-65044765/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/Baloux79)")
-
-##############################
+tools.display_side_bar()
