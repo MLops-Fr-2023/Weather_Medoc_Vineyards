@@ -1,36 +1,9 @@
 import streamlit as st
-from PIL import Image
-import s3fs
-import os
+import libs.tools as tools
 
+tools.set_page_config()
 
-# CONFIGURATION ##############
-
-st.set_page_config(
-    page_title="Hello Vineyard operator",
-    page_icon="🍇",
-    layout="wide")
-
-# VARIABLES ##################
-
-fs = s3fs.S3FileSystem(anon=False)
-image_path_images = os.environ.get("IMAGE_PATH_IMAGES")
-image_path_team = os.environ.get("IMAGE_PATH_TEAM")
-
-# FUNCTIONS ##################
-
-
-@st.cache_data(ttl=600)
-def read_image_bucket(filename):
-    return Image.open(fs.open(filename))
-
-
-@st.cache_data(ttl=600)
-def read_file(filename):
-    with fs.open(filename, 'rb') as f:
-        return f.read()
-
-# TEXT  ######################
+images_path = tools.get_images_path()
 
 
 def main():
@@ -43,15 +16,15 @@ def main():
 
     with c1:
         st.subheader('Joffrey Lemery')
-        st.image(read_image_bucket(image_path_team + 'joffrey_lemery.jpg'),
+        st.image(images_path + 'joffrey_lemery.jpg',
                  channels="RGB", output_format="JPEG", width=300)
     with c2:
         st.subheader('Nicolas Carayon')
-        st.image(read_image_bucket(image_path_team + 'nicolas_carayon.jpg'),
+        st.image(images_path + 'nicolas_carayon.jpg',
                  channels="RGB", output_format="JPEG", width=250)
     with c3:
         st.subheader('Jacques Drouvroy')
-        st.image(read_image_bucket(image_path_team + 'jacques_douvroy.jpg'),
+        st.image(images_path + 'jacques_douvroy.jpg',
                  channels="RGB", output_format="JPEG", width=250)
 
     c1, c2, c3 = st.columns(3, gap="large")
@@ -107,65 +80,8 @@ def main():
 
     st.write(pres_txt)
 
-##############################
-
 
 if __name__ == '__main__':
     main()
 
-
-# SIDEBAR ####################
-
-with st.sidebar:
-    with st.expander("Joffrey Lemery"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/joffrey-lemery-b740a5112/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/JoffreyLemery)")
-
-    with st.expander("Nicolas Carayon"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/nicolascarayon/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/nicolascarayon/)")
-
-    with st.expander("Jacques Drouvroy"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/jacques-drouvroy-65044765/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/Baloux79)")
-
-##############################
+tools.display_side_bar()

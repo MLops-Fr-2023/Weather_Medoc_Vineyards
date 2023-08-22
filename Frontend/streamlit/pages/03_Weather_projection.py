@@ -1,18 +1,13 @@
-import streamlit as st
-from PIL import Image
-import matplotlib.pyplot as plt
 import requests
-import os
-import s3fs
 import pandas as pd
+import streamlit as st
+import libs.tools as tools
 from datetime import datetime
+import matplotlib.pyplot as plt
 
-# CONFIGURATION ##############
+tools.set_page_config()
 
-st.set_page_config(
-    page_title="Hello Vineyard operator",
-    page_icon="🍇",
-    layout="wide")
+images_path = tools.get_images_path()
 
 m = st.markdown("""
 <style>
@@ -27,26 +22,12 @@ div.stButton > button:hover {
 </style>""", unsafe_allow_html=True)
 
 
-# VARIABLES ##################
+API_BASE_URL = tools.get_env_var('API_BASE_URL')
+FORECAST_ENDPOINT = tools.get_env_var('FORECAST_DATA')
+ALLOWED_CITIES = tools.get_env_var('ALLOWED_CITIES')
 
-fs = s3fs.S3FileSystem(anon=False)
-image_path_images = os.environ.get("IMAGE_PATH_IMAGES")
-
-API_BASE_URL = os.environ.get('API_BASE_URL')
-FORECAST_ENDPOINT = os.environ.get('FORECAST_DATA')
-ALLOWED_CITIES_STRING = os.environ.get('ALLOWED_CITIES')
-
-if ALLOWED_CITIES_STRING:
-    ALLOWED_CITIES = ALLOWED_CITIES_STRING.split(";")
-
-##############################
-
-# FUNCTIONS ##################
-
-
-@st.cache_data(ttl=600)
-def read_image_bucket(filename):
-    return Image.open(fs.open(filename))
+if ALLOWED_CITIES:
+    ALLOWED_CITIES = ALLOWED_CITIES.split(";")
 
 
 def get_jwt_token(username, password):
@@ -155,64 +136,7 @@ def main():
             st.warning("Please obtain the JWT token first.")
 
 
-##############################
-
 if __name__ == "__main__":
     main()
 
-
-# SIDEBAR ####################
-
-with st.sidebar:
-    with st.expander("Joffrey Lemery"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/joffrey-lemery-b740a5112/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/JoffreyLemery)")
-
-    with st.expander("Nicolas Carayon"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/nicolascarayon/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/nicolascarayon/)")
-
-    with st.expander("Jacques Drouvroy"):
-        col1, col2, col3 = st.columns([1, 0.5, 1])
-        with col1:
-            st.image(read_image_bucket(image_path_images + 'LinkedIn_Logo_blank.png'),
-                     channels="RGB", output_format="auto")
-            st.image(read_image_bucket(image_path_images + 'github_blank.png'),
-                     channels="RGB", output_format="auto")
-        with col3:
-            st.write("")
-            st.write("")
-            st.write("[Linkedin](https://www.linkedin.com/in/jacques-drouvroy-65044765/)")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("")
-            st.write("[GitHub](https://github.com/Baloux79)")
-
-##############################
+tools.display_side_bar()
