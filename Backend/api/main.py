@@ -7,6 +7,7 @@ from datetime import timedelta
 from business.City import City
 from business.Token import Token
 from db_access.DbCnx import UserDao
+from business.ApiTags import ApiTags
 from training.ModelTools import Tools
 from business.User import User, UserAdd
 from business.KeyReturn import KeyReturn
@@ -35,21 +36,30 @@ app = FastAPI(
     version="1.0.1",
     openapi_tags=[
         {
-            'name': 'Backend',
-            'description': 'Functions related to backend functionnalities'
+            'name': ApiTags.authentication.value,
+            'description': 'Features related to authentication process'
         },
         {
-            'name': 'Frontend',
-            'description': 'Functions related to frontend functionnalities'
+            'name': ApiTags.usersAndPermissions.value,
+            'description': 'Features related to users and permissions management'
         },
         {
-            'name': 'Clients',
-            'description': 'Functions related to clients'
+            'name': ApiTags.weatherData.value,
+            'description': 'Features related to Weather data'
         },
         {
-            'name': 'Administrators',
-            'description': 'Functions related to admins'
-        }])
+            'name': ApiTags.mlModel.value,
+            'description': 'Features to manage the ML model lifecycle'
+        },
+        {
+            'name': ApiTags.apiAdmin.value,
+            'description': 'Features for the API administrators'
+        },
+        {
+            'name': ApiTags.endUser.value,
+            'description': 'Features for the end user'
+        }
+    ])
 
 app.add_middleware(
     CORSMiddleware,
@@ -76,18 +86,20 @@ def Handle_Result(result: Dict[str, str]):
 
 @app.get("/")
 def read_root():
-    """"
-    API function: The goal is to allow people living around Margaux Cantenac to acces a 7 days weather features forecast
+    """
+    Display API welcome message
     """
 
     msg = "Welcome to the Joffrey LEMERY, Nicolas CARAYON and Jacques DROUVROY "
-    msg += "weather API (for places around Margaux-Cantenac)"
+    msg += "Forecast Weather API for places around Margaux in Médoc"
     return msg
 
 
-@app.post("/token", response_model=Token, tags=['Clients'])
-async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends()]):
-
+@app.post("/token", response_model=Token, tags=[ApiTags.authentication.value])
+async def get_authent_token(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends()]):
+    """
+    Return authentication token
+    """
     user = authent.authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -105,26 +117,31 @@ async def login(form_data: Annotated[authent.OAuth2PasswordRequestForm, Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get("/users/me/", response_model=User, tags=['Clients'])
-async def read_users_me(current_user: Annotated[User, Depends(authent.get_current_user)]):
+@app.get("/users/me/", response_model=User, tags=[ApiTags.authentication.value])
+async def get_user_authenticated(current_user: Annotated[User, Depends(authent.get_current_user)]):
+    """
+    Return authenticated user info
+    """
     return current_user
 
 
-@app.get("/forecast_data/", tags=['Clients'])
+@app.get("/forecast_data/", tags=[ApiTags.endUser.value])
 async def forecast_data(city: Annotated[City, Depends()],
                         current_user: Annotated[User, Depends(authent.get_current_user)]):
+    """
+    Return weather forecast data for the city in input for the next 3 days (data from table FORECAST)
+    """
     result = UserDao.get_forecast_data_df(city=city.name_city)
     return Handle_Result(result)
 
 
-@app.post("/add_user", name='Add user', tags=['Administrators'])
+@app.post("/add_user", name='Add user', tags=[ApiTags.usersAndPermissions.value])
 async def add_user(user_add: Annotated[UserAdd, Depends()],
                    current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Add user to table USERS
-    INPUTS :
-         user to add : Dictionnary
-    OUTPUTS : User added in Snowflake - Users dB
+    """
+    Add user to table USERS
+    \nInput : user to add
     """
     if Permissions.Permissions.user_mngt.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -138,15 +155,14 @@ async def add_user(user_add: Annotated[UserAdd, Depends()],
     return Handle_Result(result)
 
 
-@app.post("/add_user_permission", name='Associate permissions to a user', tags=['Administrators'])
+@app.post("/add_user_permission", name='Associate permissions to a user', tags=[ApiTags.usersAndPermissions.value])
 async def add_user_permission(user_permissions_add: Annotated[UserPermission, Depends()],
                               current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Give permission to user in table USER_PERMISSION
-    INPUTS :
-         user_id : user ID
-         permission_id : permission ID
-    OUTPUTS : User_permissions added in Snowflake -  User_permission dB
+    """Add permission to user in table USER_PERMISSION
+    \nInputs :
+    \n- user_id : user ID
+    \n- permission_id : permission ID
     """
     if Permissions.Permissions.user_mngt.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -171,14 +187,14 @@ async def add_user_permission(user_permissions_add: Annotated[UserPermission, De
     return Handle_Result(result)
 
 
-@app.post("/edit_user", name='User edition', tags=['Administrators'])
+@app.post("/edit_user", name='User edition', tags=[ApiTags.usersAndPermissions.value])
 async def edit_user(user: Annotated[UserAdd, Depends()],
                     current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Edit a user in table USERS
-    INPUTS :
-         user to modify : Dictionnary
-    OUTPUTS : User modified in Snowflake - Users dB
+    """
+    Edit user in table USERS
+    Inputs :
+    \n user : user to edit
     """
 
     if Permissions.Permissions.user_mngt.value not in current_user.permissions:
@@ -195,13 +211,13 @@ async def edit_user(user: Annotated[UserAdd, Depends()],
     return Handle_Result(result)
 
 
-@app.post("/delete_user", name='Delete a user from the dB', tags=['Administrators'])
+@app.post("/delete_user", name='Delete a user from the dB', tags=[ApiTags.usersAndPermissions.value])
 async def delete_user(user_id: str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Delete user from table USERS
-    INPUTS :
-         user to add : Dictionnary
-    OUTPUTS : User added in Snowflake - Users dB
+    """
+    Delete user from table USERS
+    Inputs :
+    \nuser to add : Dictionnary
     """
 
     if Permissions.Permissions.user_mngt.value not in current_user.permissions:
@@ -217,11 +233,13 @@ async def delete_user(user_id: str, current_user: Annotated[User, Depends(authen
     return Handle_Result(result)
 
 
-@app.post("/delete_user_permission", name='Remove permission to user', tags=['Administrators'])
+@app.post("/delete_user_permission", name='Remove permission to user', tags=[ApiTags.usersAndPermissions.value])
 async def delete_user_permission(user_permissions: Annotated[UserPermission, Depends()],
                                  current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Delete permission_id for user_id from table USER_PERMISSION"""
+    """
+    Delete permission_id for user_id from table USER_PERMISSION
+    """
 
     if Permissions.Permissions.user_mngt.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -238,9 +256,12 @@ async def delete_user_permission(user_permissions: Annotated[UserPermission, Dep
     return Handle_Result(result)
 
 
-@app.post("/get_logs", name='Get logs', tags=['Administrators'])
+@app.post("/get_logs", name='Get logs', tags=[ApiTags.apiAdmin.value])
 async def get_logs(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
-    """Get log file"""
+
+    """
+    Get API logs
+    """
 
     if current_user.user_id != SpecialUsersID.administrator.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -248,8 +269,12 @@ async def get_logs(current_user: Annotated[User, Depends(authent.get_current_act
     return UserDao.get_logs()
 
 
-@app.get("/db_env", name='Get database environment info', tags=['Administrators'])
+@app.get("/db_env", name='Get database environment info', tags=[ApiTags.apiAdmin.value])
 def get_db_info(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+
+    """
+    Return info about SQL Database to determine the running environment
+    """
 
     if current_user.user_id != SpecialUsersID.administrator.value:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -261,14 +286,14 @@ def get_db_info(current_user: Annotated[User, Depends(authent.get_current_active
     }
 
 
-@app.post("/populate_weather_table", name='Populate wheather table with historical data from Weather API',
-          tags=['Backend'])
+@app.post("/populate_weather_table", name='Populate table WEATHER_DATA with historical data from Weather API',
+          tags=[ApiTags.weatherData.value])
 async def populate_weather_table(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Update table WEATHER_DATA with current data from Wheather API for all cities
-    INPUTS :
-        current user : str
-    OUTPUTS : Data updated in Snowflake
+    """
+    Update table WEATHER_DATA with current data from Wheather API for all cities
+    Inputs :
+    \ncurrent user : authenticated user
     """
 
     if Permissions.Permissions.get_data.value not in current_user.permissions:
@@ -277,13 +302,13 @@ async def populate_weather_table(current_user: Annotated[User, Depends(authent.g
     return await UserDataProc.insert_weather_data_historical()
 
 
-@app.post("/update_weather_data", name='Update database with data from Weather API', tags=['Backend'])
+@app.post("/update_weather_data", name='Update database with data from Weather API', tags=[ApiTags.weatherData.value])
 async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Update table WEATHER_DATA with current data from Wheather API for all cities
-    INPUTS :
-        current user : str
-    OUTPUTS : Data updated in Snowflake
+    """
+    Update table WEATHER_DATA with current data from Wheather API for all cities
+    Inputs :
+    \ncurrent user : authenticated user
     """
 
     if Permissions.Permissions.get_data.value not in current_user.permissions:
@@ -292,9 +317,12 @@ async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_cur
     return await UserDataProc.update_weather_data()
 
 
-@app.post("/delete_weather_data", name='Delete all weather data from database', tags=['Backend'])
+@app.post("/delete_weather_data", name='Empty table WEATHER_DATA', tags=[ApiTags.weatherData.value])
 async def delete_weather_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
-    """Empty table WEATHER_DATA """
+
+    """
+    Empty table WEATHER_DATA
+    """
 
     if Permissions.Permissions.get_data.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -303,9 +331,12 @@ async def delete_weather_data(current_user: Annotated[User, Depends(authent.get_
     return Handle_Result(result)
 
 
-@app.post("/delete_forecast_data", name='Delete all weather data from database', tags=['Backend'])
+@app.post("/delete_forecast_data", name='Empty table FORECAST', tags=[ApiTags.weatherData.value])
 async def delete_forecast_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
-    """Empty table FORECAST_DATA """
+
+    """
+    Empty table FORECAST_DATA
+    """
 
     if Permissions.Permissions.get_data.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -314,14 +345,14 @@ async def delete_forecast_data(current_user: Annotated[User, Depends(authent.get
     return Handle_Result(result)
 
 
-@app.post("/forecast_city/{city}", name='Forecast 7-days', tags=['Backend'])
+@app.post("/forecast_city/{city}", name='Set weather forecast of next 3 days for city into FORECAST table',
+          tags=[ApiTags.mlModel.value])
 async def forecast(city: Annotated[City, Depends()],
                    current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Returns the forecast of weather feature for city = {city}.
-    INPUTS :
-        city: str
-    OUTPUTS : df with forecast feature overs the next 7-days
+    """
+    Return the forecast of weather for city in input
+    \nInputs : city
     """
 
     if Permissions.Permissions.forecast.value not in current_user.permissions:
@@ -330,11 +361,14 @@ async def forecast(city: Annotated[City, Depends()],
     return Handle_Result(result)
 
 
-@app.post("/train_model/{city}", name='Launch model training with a given set of hyperparamaters', tags=['Backend'])
+@app.post("/train_model/{city}", name='Launch model training with a given set of hyperparamaters',
+          tags=[ApiTags.mlModel.value])
 async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams,
                       train_label: str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
-    """Launch model training with the hyperparameters given in parameters"""
+    """
+    Launch model training with the hyperparameters given in parameters
+    """
 
     if Permissions.Permissions.training.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -343,11 +377,15 @@ async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParam
     return Handle_Result(result)
 
 
-@app.post("/train_models/{city}", name='Launch several trainings for hyperparameters optimization', tags=['Backend'])
+@app.post("/train_models/{city}", name='Launch several trainings for hyperparameters optimization',
+          tags=[ApiTags.mlModel.value])
 async def train_models(city: Annotated[City, Depends()], train_label: str,
                        current_user: Annotated[User, Depends(authent.get_current_active_user)],
                        hyper_params_dict: Dict[str, HyperParams] = Body(...)):
-    """Launch trainings of the model with the hyperparameters defined in hyper_params_dict"""
+
+    """
+    Launch trainings of the model with the sets of hyperparameters defined in hyper_params_dict (one training per set)
+    """
 
     if Permissions.Permissions.training.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
@@ -356,10 +394,13 @@ async def train_models(city: Annotated[City, Depends()], train_label: str,
     return Handle_Result(result)
 
 
-@app.post("/retrain_model/{city}", name='Launch a retraining of the model', tags=['Backend'])
+@app.post("/retrain_model/{city}", name='Launch a retraining of the model', tags=[ApiTags.mlModel.value])
 async def retrain_model(city: Annotated[City, Depends()], n_epochs: int,
                         current_user: Annotated[User, Depends(authent.get_current_active_user)]):
-    """Launch a new train of current model on new data"""
+
+    """
+    Launch a new train of current model on new data
+    """
 
     if Permissions.Permissions.training.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")

@@ -193,7 +193,7 @@ def test_read_root(api_client):
     response = api_client.get("/")
     assert response.status_code == 200
     msg = "Welcome to the Joffrey LEMERY, Nicolas CARAYON and Jacques DROUVROY "
-    msg += "weather API (for places around Margaux-Cantenac)"
+    msg += "Forecast Weather API for places around Margaux in Médoc"
     assert response.text.strip("'").strip('"') == msg
 
 
