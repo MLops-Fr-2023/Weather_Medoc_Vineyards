@@ -23,7 +23,7 @@ div.stButton > button:hover {
 
 
 API_BASE_URL = tools.get_env_var('API_BASE_URL')
-FORECAST_ENDPOINT = tools.get_env_var('FORECAST_DATA')
+FORECAST_DATA = tools.get_env_var('FORECAST_DATA')
 ALLOWED_CITIES = tools.get_env_var('ALLOWED_CITIES')
 
 if ALLOWED_CITIES:
@@ -47,7 +47,7 @@ def get_jwt_token(username, password):
 
 def call_forecast_api(jwt_token, city):
     headers = {"Authorization": f"Bearer {jwt_token}"}
-    url = f"{API_BASE_URL}{FORECAST_ENDPOINT}?name_city=" + str(city)
+    url = f"{API_BASE_URL}{FORECAST_DATA}?name_city=" + str(city)
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
@@ -64,23 +64,33 @@ def get_dataframe(df):
     return df
 
 
-# Function to plot the forecast data
 def plot_forecast_data(forecast_data):
+    """
+    Display the forecast graph for the 9 variables of interest along 3 columns
+    """
     # Convert forecast_data to DataFrame
     df = pd.DataFrame(get_dataframe(forecast_data))
     df = df.sort_values(by=['DATE'], ascending=True)
     # Get the time index
     time_index = pd.to_datetime(df['DATE'])
 
-    # Plot each signal as a separate subplot
-    for signal_name in df.columns[1:]:  # Assuming the first column is 'time'
-        plt.figure(figsize=(10, 5))
-        plt.plot(time_index, df[signal_name])
-        plt.xlabel('Time')
-        plt.ylabel('Value')
-        plt.axvline(datetime.now(), color='orange', linestyle='--')
-        plt.title(signal_name)
-        st.pyplot(plt)
+    # Exclude 'CITY' from the columns to plot
+    columns_to_plot = [col for col in df.columns[1:] if col != 'CITY']
+
+    # Create 3 columns
+    cols = st.columns(3)
+
+    # Plot each signal as a separate subplot in one of the columns
+    for idx, signal_name in enumerate(columns_to_plot):  # Assuming the first column is 'time'
+        with cols[idx % 3]:
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(time_index, df[signal_name])
+            ax.set_xlabel('Time')
+            ax.set_ylabel('Value')
+            ax.axvline(datetime.now(), color='orange', linestyle='--')
+            ax.set_title(signal_name)
+            st.pyplot(fig)
+            plt.close(fig)
 
 
 # Function to print the dataframe for details
