@@ -4,22 +4,30 @@ import libs.tools as tools
 tools.set_page_config()
 
 images_path = tools.get_images_path()
+page_intro = "Introduction"
+page_data_ctxt = "Data context"
+page_api_db = "API and SQL database"
+page_infrastruct = "Infrastructure"
+page_transformers = "Transformers"
+
+
+def display_page_title():
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.title('Theoritical background')
+        c1, c2, c3, c4 = st.columns(4, gap="large")
+    st.markdown("""---""")
 
 
 def main():
 
-    choice = st.sidebar.radio("Submenu", ["Introduction", "Data", "Infrastructure", "Transformers"])
-    if choice == 'Introduction':
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.title('Project report')
-            c1, c2, c3, c4 = st.columns(4, gap="large")
-        st.markdown("""---""")
+    display_page_title()
 
+    choice = st.sidebar.radio("Submenu", [page_intro, page_data_ctxt, page_api_db, page_infrastruct, page_transformers])
+
+    if choice == page_intro:
         col1, col2, col3 = st.columns([0.5, 8, 0.5])
         with col2:
-            st.title('Context')
-            st.markdown("---")
             st.write("""
                      In today's rapidly evolving world of data science and machine learning,
                      integrating MLOps (Machine Learning Operations) into projects has become
@@ -91,16 +99,10 @@ def main():
 
             st.write("""""")
 
-    if choice == 'Data':
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.title('Project report')
-            c1, c2, c3, c4 = st.columns(4, gap="large")
-        st.markdown("""---""")
-
+    if choice == page_data_ctxt:
         col1, col2, col3 = st.columns([0.5, 8, 0.5])
         with col2:
-            st.title('Context')
+            st.title(page_data_ctxt)
             st.markdown("""---""")
             st.write("""
                      The aim of the project is to provide weather forecasts for the area of the great wine châteaux
@@ -144,13 +146,75 @@ def main():
             with col2:
                 st.image(images_path + 'Maps_cities.png', channels="RGB", output_format="auto")
 
-    if choice == 'Infrastructure':
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.title('Project report')
-            c1, c2, c3, c4 = st.columns(4, gap="large")
-        st.markdown("""---""")
+    if choice == page_api_db:
+        st.title(f"{page_api_db}")
+        cols = st.columns([0.5, 0.5])
+        with cols[0]:
+            st.markdown("### Users and permissions")
+            st.image(images_path + 'db_sql_users_perms.png', channels="RGB", output_format="auto")
+        with cols[1]:
+            st.markdown("### Weather data")
+            st.image(images_path + 'db_sql_weather_data.png', channels="RGB", output_format="auto")
 
+        st.markdown("---")
+
+        st.markdown("## API features")
+
+        cols = st.columns(3)
+        with cols[0]:
+            st.markdown("---")
+            st.markdown("##### Users and permissions")
+            st.markdown("""
+                - create/edit/delete User
+                - create/edit/delete Permission
+                - add/remove permission to user
+            """)
+        with cols[1]:
+            st.markdown("---")
+            st.markdown("##### Weather data")
+            st.markdown("""
+                - populate table WEATHER_DATA with historitical data from weatherstack.com (15 years of data from
+                        20/07/2008 to 31/05/2023)
+                - update WEATHER_DATA with data from weatherstack.com (from last date referenced in WEATHER_DATA
+                        to today)
+                - compute forecast for specific city and insert results into table FORECAST_DATA
+                - empty table WEATHER_DATA
+                - empty table FORECAST_DATA
+            """)
+        with cols[2]:
+            st.markdown("---")
+            st.markdown("##### Machine Learning Model")
+            st.markdown("""
+                - launch training of the model with a specific set of parameters
+                - launch several training of the model with different sets of parameters
+                - retrain the model with most recent data
+            """)
+
+        cols = st.columns(3)
+        with cols[0]:
+            st.markdown("---")
+            st.markdown("##### Administrators")
+            st.markdown("""
+                - get API logs
+                - get SQL database info (host, user)
+            """)
+            st.markdown("##### Authentication")
+            st.markdown("""
+                - get authentication token
+                - get info about authenticated user
+            """)
+        with cols[1]:
+            st.markdown("---")
+            st.markdown("##### End user")
+            st.markdown("""
+                - get forecast data for a city from table FORECAST_DATA
+            """)
+            st.markdown("##### Default")
+            st.markdown("""
+                - get welcome message
+            """)
+
+    if choice == page_infrastruct:
         col1, col2, col3 = st.columns([0.5, 8, 0.5])
         with col2:
             st.title('Context')
@@ -334,13 +398,7 @@ def main():
                              channels="RGB", output_format="auto", use_column_width='auto')
         st.markdown("""---""")
 
-    if choice == 'Transformers':
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.title('Project report')
-            c1, c2, c3, c4 = st.columns(4, gap="large")
-        st.markdown("""---""")
-
+    if choice == page_transformers:
         col1, col2, col3 = st.columns([0.5, 8, 0.5])
         with col2:
             st.title('Context')

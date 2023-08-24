@@ -346,7 +346,7 @@ async def delete_forecast_data(current_user: Annotated[User, Depends(authent.get
 
 
 @app.post("/forecast_city/{city}", name='Set weather forecast of next 3 days for city into FORECAST table',
-          tags=[ApiTags.mlModel.value])
+          tags=[ApiTags.weatherData.value])
 async def forecast(city: Annotated[City, Depends()],
                    current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
