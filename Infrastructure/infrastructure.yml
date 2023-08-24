@@ -5,7 +5,7 @@ Description: >-
 Parameters:
   VPCWMVCidrBlock:
     Type: String
-    Default: 155.155.0.0/16
+    Default: 155.156.0.0/16
     Description: Enter the main VPC_WMV CIDR block.
   AmiIdentifierPrivate:
     Type: String
@@ -33,6 +33,7 @@ Resources:
     Type: 'AWS::EC2::VPC'
     Properties:
       EnableDnsSupport: true
+      EnableDnsHostnames: true      # Enable DNS hostnames
       CidrBlock: !Ref VPCWMVCidrBlock
       Tags:
         - Key: Name
@@ -430,8 +431,8 @@ Resources:
           fi   
           git clone -b develop https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git          
           cd /home/ubuntu/Weather_Medoc_Vineyards/Frontend
-          gdown --fuzzy ${FileEnvPrdFront}
-          mv -f env_frontend .env
+          sudo gdown --fuzzy ${FileEnvPrdFront}
+          sudo mv -f env_frontend .env
           ./run_docker_compose.sh
           rm .env
           
@@ -457,8 +458,8 @@ Resources:
           fi
           git clone -b develop https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git          
           cd /home/ubuntu/Weather_Medoc_Vineyards/Backend
-          gdown --fuzzy ${FileEnvPrdBack}
-          mv -f env_backend .env
+          sudo gdown --fuzzy ${FileEnvPrdBack}
+          sudo mv -f env_backend .env
           ./run_docker_compose.sh
           rm .env         
 
@@ -527,6 +528,7 @@ Resources:
   PrivateLoadBalancer: 
       Type: AWS::ElasticLoadBalancingV2::LoadBalancer
       Properties:
+        Name: 'app-internal-myapp' # Use the desired DNS name
         Type: application
         Scheme: internal
         SecurityGroups:
@@ -534,6 +536,36 @@ Resources:
         Subnets:
           - !Ref PrivateSubnetWMVa
           - !Ref PrivateSubnetWMVb
+
+
+#Hosted Zone and DNS Alis for Load Balancer
+
+  MyPrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    DependsOn: PrivateLoadBalancer
+    Properties:
+      Name: 'internal.myapp'  # Replace with your domain name
+      VPCs:
+        - VPCId: !Ref VPCWMV
+          VPCRegion: !Ref AWS::Region
+
+  PrivateLoadBalancerAliasRecord:
+    Type: AWS::Route53::RecordSetGroup
+    DependsOn: 
+      - MyPrivateHostedZone
+      - PrivateLoadBalancer
+    Properties:
+      HostedZoneId: !Ref MyPrivateHostedZone
+      # HostedZoneName: 'internal.myapp'
+      # Name: 'app-internal-myapp.'
+      RecordSets:
+      - Name: 'app.internal.myapp'
+        Type: A
+        AliasTarget:
+          DNSName: !GetAtt 'PrivateLoadBalancer.DNSName'  # Use the DNSName attribute directly
+          # HostedZoneId: !GetAtt MyPrivateHostedZone.Id
+          # HostedZoneId: !Ref MyPrivateHostedZone
+          HostedZoneId: !GetAtt 'PrivateLoadBalancer.CanonicalHostedZoneID'
 
 #Listener
   PublicLoadBalancerListener:
