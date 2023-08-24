@@ -132,7 +132,7 @@ async def get_user_authenticated(current_user: Annotated[User, Depends(authent.g
 async def get_forecast(city: Annotated[City, Depends()],
                        current_user: Annotated[User, Depends(authent.get_current_user)]):
     """
-    Return weather forecast data for the city in input for the next 3 days (data from table FORECAST)
+    Return weather forecast data for the city in input for the next 7 days (data from table FORECAST)
     """
     result = UserDao.get_forecast_data_df(city=city.name_city)
     return Handle_Result(result)
@@ -361,7 +361,7 @@ async def delete_forecast_data(current_user: Annotated[User, Depends(authent.get
     return Handle_Result(result)
 
 
-@app.post("/forecast_city/{city}", name='Set weather forecast of next 3 days for city into FORECAST table',
+@app.post("/forecast_city/{city}", name='Set weather forecast of the next 7 days for city into FORECAST table',
           tags=[ApiTags.weatherData.value])
 async def forecast(city: Annotated[City, Depends()],
                    current_user: Annotated[User, Depends(authent.get_current_active_user)]):
