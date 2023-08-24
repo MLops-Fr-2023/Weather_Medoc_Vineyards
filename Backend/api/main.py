@@ -1,7 +1,8 @@
 import os
 import uvicorn
-from typing import Dict
+import pandas as pd
 from fastapi import Body
+from typing import Dict, Any
 from typing import Annotated
 from datetime import timedelta
 from business.City import City
@@ -76,8 +77,10 @@ varenv_securapi = VarEnvSecurApi()
 
 # Routes ###########################
 
-def Handle_Result(result: Dict[str, str]):
+def Handle_Result(result: Dict[str, Any]):
     if KeyReturn.success.value in result:
+        if isinstance(result[KeyReturn.success.value], pd.DataFrame):
+            result[KeyReturn.success.value] = result[KeyReturn.success.value].to_dict(orient='records')
         return result
     else:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -126,12 +129,25 @@ async def get_user_authenticated(current_user: Annotated[User, Depends(authent.g
 
 
 @app.get("/forecast_data/", tags=[ApiTags.endUser.value])
-async def forecast_data(city: Annotated[City, Depends()],
-                        current_user: Annotated[User, Depends(authent.get_current_user)]):
+async def get_forecast(city: Annotated[City, Depends()],
+                       current_user: Annotated[User, Depends(authent.get_current_user)]):
     """
     Return weather forecast data for the city in input for the next 3 days (data from table FORECAST)
     """
     result = UserDao.get_forecast_data_df(city=city.name_city)
+    return Handle_Result(result)
+
+
+@app.get("/get_weather_on_period/", tags=[ApiTags.endUser.value])
+async def get_historitical(city: Annotated[City, Depends()], start_date, end_date,
+                           current_user: Annotated[User, Depends(authent.get_current_user)]):
+    """
+    Return historitical weather data for the city in input on the period defined by start_date and end_date
+    \nFormat expected for start_date and end_date : 'YYYY-MM-DD'
+    """
+    result = UserDao.get_hist_data_df(city=city.name_city, start_date=start_date, end_date=end_date)
+    print(f"\n result : {result}  \n")
+
     return Handle_Result(result)
 
 
