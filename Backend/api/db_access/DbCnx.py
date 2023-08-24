@@ -479,6 +479,29 @@ class UserDao():
         return forecast_data
 
     @staticmethod
+    def get_hist_data(city: str, start_date, end_date):
+        """
+        Get weather data from table WEATHER_DATA on period defined by start_date and end_date
+        """
+        ctx = DbCnx.get_db_cnx(db_info)
+        cs = DbCnx.get_cursor(db_info.db_env, ctx)
+        try:
+            request = """
+                SELECT OBSERVATION_TIME, TEMPERATURE, WIND_SPEED, WIND_DEGREE, PRESSURE, PRECIP,
+                HUMIDITY, CLOUDCOVER, FEELSLIKE, UV_INDEX
+                FROM WEATHER_DATA
+                WHERE CITY = %s
+                AND OBSERVATION_TIME BETWEEN %s AND %s
+                """
+            cs.execute(request, (city, start_date, end_date))
+            hist_data = cs.fetchall()
+        finally:
+            cs.close()
+            ctx.close()
+
+        return hist_data
+
+    @staticmethod
     def get_forecast_data_df(city: str):
         forecast_dict = UserDao.get_forecast_data(city)
         df = pd.DataFrame(forecast_dict)
@@ -486,6 +509,20 @@ class UserDao():
             return {KeyReturn.error.value: f"No forecast data for city {city}"}
         else:
             df.drop('ID', axis=1, inplace=True)
+            return {KeyReturn.success.value: df}
+
+    def get_hist_data_df(city: str, start_date: str, end_date: str):
+        """
+        Return a dataframe containing the historitical data from WEATHER_DATA table on period defined
+        by start_date and end_date for city
+
+        Expected format for start_date and end_date : 'YYYY-MM-DD'
+        """
+        hist_dict = UserDao.get_hist_data(city=city, start_date=start_date, end_date=end_date)
+        df = pd.DataFrame(hist_dict)
+        if df.empty:
+            return {KeyReturn.error.value: f"No historitical data for city {city} on period [{start_date}, {end_date}]"}
+        else:
             return {KeyReturn.success.value: df}
 
     @staticmethod
