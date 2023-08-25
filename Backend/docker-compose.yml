@@ -51,10 +51,7 @@ services:
       PATH_ARTIFACT_INFERENCE: ${PATH_ARTIFACT_INFERENCE}
       S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}
     ports:
-      - 8000:8000
-    
-    
-      
+      - 8000:8000      
     # deploy:
     #   resources:
     #     reservations:
@@ -88,10 +85,7 @@ services:
         - db_datapg_postresql_mlflow:/var/lib/postgresql/data/pgdata
         - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
     networks:
-        - mlflow
- 
- 
- 
+        - mlflow 
     healthcheck:
       test: pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB -p $$POSTGRES_PORT
       start_period: 5s
