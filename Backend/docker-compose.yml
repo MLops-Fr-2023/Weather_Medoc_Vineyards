@@ -52,6 +52,7 @@ services:
       S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}
     ports:
       - 8000:8000      
+<<<<<<< HEAD
     deploy:
       resources:
         reservations:
@@ -59,6 +60,15 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+=======
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+>>>>>>> 9b7faaa (wis)
     networks:
         - outside
         - backend
