@@ -487,7 +487,9 @@ class UserDao():
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         try:
             request = """
-                SELECT OBSERVATION_TIME, TEMPERATURE, WIND_SPEED, WIND_DEGREE, PRESSURE, PRECIP,
+                SELECT CONCAT(DATE(OBSERVATION_TIME), 'T', LPAD(HOUR(TIME), 2, '0'), ':',
+                LPAD(MINUTE(TIME), 2, '0'), ':', LPAD(SECOND(TIME), 2, '0')) AS DATE,
+                TEMPERATURE, WIND_SPEED, WIND_DEGREE, PRESSURE, PRECIP,
                 HUMIDITY, CLOUDCOVER, FEELSLIKE, UV_INDEX
                 FROM WEATHER_DATA
                 WHERE CITY = %s
