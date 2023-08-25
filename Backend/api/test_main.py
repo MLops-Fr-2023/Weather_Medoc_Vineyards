@@ -433,6 +433,13 @@ def test_delete_weather_data(api_client, auth_headers_test, auth_headers_admax):
     response = api_client.post("/delete_weather_data", headers=auth_headers_admax)
     assert response.status_code == HttpCodes.success
 
+    # Populate and update WEATHER_DATA
+    response = api_client.post("/populate_weather_table", headers=auth_headers_admax)
+    assert response.status_code == HttpCodes.success
+
+    response = api_client.post("/update_weather_data", headers=auth_headers_admax)
+    assert response.status_code == HttpCodes.success
+
 
 def test_delete_forecast_data(api_client, auth_headers_test, auth_headers_admax):
 
