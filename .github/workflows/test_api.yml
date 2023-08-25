@@ -104,9 +104,9 @@ jobs:
           echo MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}
           echo MLFLOW_ARTIFACTS=${MLFLOW_ARTIFACTS}
 
-          docker-compose -f Backend/docker-compose.test.yml build
-          docker-compose -f Backend/docker-compose.test.yml up --exit-code-from api_pytest
+          docker-compose -f Backend/docker-compose.test_api.yml build
+          docker-compose -f Backend/docker-compose.test_api.yml up --exit-code-from api_pytest
 
       - name: Clean up Docker
         if: always()
-        run: docker-compose -f Backend/docker-compose.test.yml down
+        run: docker-compose -f Backend/docker-compose.test_api.yml down
