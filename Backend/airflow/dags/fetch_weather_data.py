@@ -46,17 +46,21 @@ def get_token():
     Variable.set(key='access_token', value=access_token)
 
 
-def fetch_weather_data():
-    print('fetch_weather_data running')
+def update_weather_data():
+    print('update_weather_data running')
     token_type = Variable.get(key='token_type')
     access_token = Variable.get(key='access_token')
     url = 'http://api:8000/update_weather_data'
     headers = {
         "accept": "application/json",
         "Authorization": f"{token_type} {access_token}"}
-    requests.post(url, headers=headers)
+    answer = requests.post(url, headers=headers)
 
-    return 'fetch_weather_data terminated'
+    if answer.status_code == 200:
+        return 'weather data updated'
+    else:
+        print(answer.json())
+        raise Exception("Update weather data failed with status code : ", answer.status_code)
 
 
 def delete_forecast_data():
@@ -67,9 +71,12 @@ def delete_forecast_data():
     headers = {
         "accept": "application/json",
         "Authorization": f"{token_type} {access_token}"}
-    requests.post(url, headers=headers)
+    answer = requests.post(url, headers=headers)
 
-    return 'Forecast data deleted'
+    if answer.status_code == 200:
+        return 'Forecast data deleted'
+    else:
+        raise Exception("Forecast data failed with status code : ", answer.status_code)
 
 
 def forecast_data(city):
@@ -81,9 +88,13 @@ def forecast_data(city):
     headers = {
         "accept": "application/json",
         "Authorization": f"{token_type} {access_token}"}
-    requests.post(url, headers=headers)
+    answer = requests.post(url, headers=headers)
 
-    return f'process_raw_data terminated for {city}'
+    if answer.status_code == 200:
+        return f'Forecast data terminated for {city}'
+    else:
+        print(answer.json())
+        raise Exception(f"Forecast data failed for {city} with status code : ", answer.status_code)
 
 
 get_token = PythonOperator(
@@ -92,9 +103,9 @@ get_token = PythonOperator(
     dag=my_dag,
     doc="""use api root token to have it""")
 
-fetch_weather_data = PythonOperator(
-    task_id='fetch_weather_data',
-    python_callable=fetch_weather_data,
+update_weather_data = PythonOperator(
+    task_id='update_weather_data',
+    python_callable=update_weather_data,
     dag=my_dag,
     doc="""use api root token to have it
             use api root to  update data""")
@@ -113,4 +124,4 @@ for city_key, city_value in cities.items():
         op_args=[city_value],  # Pass the city value as a list
         dag=my_dag)
 
-    get_token >> [fetch_weather_data, delete_forecast_data] >> task
+    get_token >> [update_weather_data, delete_forecast_data] >> task
