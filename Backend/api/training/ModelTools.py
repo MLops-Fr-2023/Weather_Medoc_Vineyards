@@ -282,7 +282,6 @@ class Tools():
 
         # transform data
         df = Tools.transform_data(df, city)
-        print(df.head(3))
 
         try:
             with mlflow.start_run():
@@ -322,7 +321,7 @@ class Tools():
                 predlist = Tools.get_var_data(y_test_preds, Tools.fcst_horizon)
                 results_df = Tools.get_results(df, varlist, predlist)
                 all_metrics = Tools.get_all_metrics(results_df)
-                Tools.get_chart(results_df, df, varlist, predlist)
+                Tools.get_chart(df, varlist, predlist)
 
                 logging.info(f"Retraining performed with model : {varenv_inference_model.model_inference}")
 

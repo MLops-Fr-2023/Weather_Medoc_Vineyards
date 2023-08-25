@@ -32,7 +32,11 @@ def retrain():
         "accept": "application/json",
         "Authorization": f"{token_type} {access_token}"}
     answer = requests.post(url, headers=headers)
-    return 'model retrained'
+
+    if answer.status_code == 200:
+        return 'model retained'
+    else:
+        raise Exception("Retrain model failed with status code : ", answer.status_code)
 
 
 my_dag = DAG(
@@ -42,6 +46,7 @@ my_dag = DAG(
     default_args={
         'start_date': days_ago(0)},
     catchup=False)
+
 
 retrain_model = PythonOperator(
     task_id='retrain_model',

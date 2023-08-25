@@ -52,13 +52,13 @@ services:
       S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}
     ports:
       - 8000:8000      
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     networks:
         - outside
         - backend
@@ -92,8 +92,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 55
-
-
 
   mlflow_server:
     restart: always
@@ -134,10 +132,7 @@ services:
     networks:
         - proxy
         - mlflow
-        - backend
-    
-    
-    
+        - backend    
 
   airflow_postgresql:
     image: postgres:13
@@ -224,7 +219,6 @@ services:
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
         - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
         - /var/run/docker.sock:/var/run/docker.sock
-    # entrypoint: /bin/bash
     command: 
       bash -c "airflow db init && airflow users create --firstname ${AIRFLOW_FIRSTNAME} --lastname ${AIRFLOW_LASTNAME} --email ${AIRFLOW_EMAIL} --password ${AIRFLOW_PWD} --username ${AIRFLOW_USERNAME} --role Admin"
     depends_on:
@@ -326,6 +320,7 @@ services:
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       API_USER: ${API_USER}
       API_PWD: ${API_PWD}
+      N_EPOCHS: ${N_EPOCHS}
     volumes:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
@@ -362,6 +357,7 @@ services:
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       API_USER: ${API_USER}
       API_PWD: ${API_PWD}
+      N_EPOCHS: ${N_EPOCHS}
     volumes:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
