@@ -377,7 +377,7 @@ class UserDao():
         return last_date
 
     @staticmethod
-    def empty_weather_data():
+    async def empty_weather_data():
         ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         request = "DELETE FROM WEATHER_DATA"
@@ -394,7 +394,7 @@ class UserDao():
             ctx.close()
 
     @staticmethod
-    def empty_forecast_data():
+    async def empty_forecast_data():
         ctx = DbCnx.get_db_cnx(db_info)
         cs = DbCnx.get_cursor(db_info.db_env, ctx)
         request = "DELETE FROM FORECAST_DATA"
@@ -513,6 +513,7 @@ class UserDao():
             df.drop('ID', axis=1, inplace=True)
             return {KeyReturn.success.value: df}
 
+    @staticmethod
     def get_hist_data_df(city: str, start_date: str, end_date: str):
         """
         Return a dataframe containing the historitical data from WEATHER_DATA table on period defined
@@ -528,7 +529,7 @@ class UserDao():
             return {KeyReturn.success.value: df}
 
     @staticmethod
-    def send_weather_data_from_df_to_db(df):
+    async def send_data_from_df_to_db(df, table_name):
         db_env = db_info.db_env
         if db_env == "mysql":
             mysql_host, mysql_db, mysql_usr, mysql_pwd = [db_info.db_host,
@@ -582,75 +583,11 @@ class UserDao():
                     df_tmp = df[(k - 1) * nb_rec:]
                     terminated = True
 
-                df_tmp.to_sql(name='WEATHER_DATA', con=engine, if_exists='append', index=False)
+                df_tmp.to_sql(name=table_name, con=engine, if_exists='append', index=False)
                 k += 1
             return True
         except Exception as e:
-            msg = f"Data insertion into table WEATHER_DATA failed : {e}"
-            print(msg)
-            logging.exception(msg)
-            return False
-
-    @staticmethod
-    def send_forecast_data_from_df_to_db(df):
-        db_env = db_info.db_env
-        if db_env == "mysql":
-            mysql_host, mysql_db, mysql_usr, mysql_pwd = [db_info.db_host,
-                                                          db_info.db_name,
-                                                          db_info.db_user,
-                                                          db_info.db_pwd]
-        elif db_env == "snowflake":
-            snflk_usr, snflk_pwd, snflk_act, snflk_wh, snflk_db, snflk_sch = [db_info.db_user,
-                                                                              db_info.db_pwd,
-                                                                              db_info.db_account,
-                                                                              db_info.db_warehouse,
-                                                                              db_info.db_name,
-                                                                              db_info.db_schema]
-        else:
-            raise Exception("Invalid database environment")
-
-        # Limit number of lines to send at a time to each database system
-        LIM_REC_SNFLK = 16384
-        LIM_REC_MYSQL = 150000
-
-        try:
-            if db_env == "mysql":
-                engine = create_engine(f"mysql+mysqlconnector://{mysql_usr}:{mysql_pwd}@{mysql_host}/{mysql_db}",
-                                       echo=False)
-                nb_rec = LIM_REC_MYSQL
-
-            elif db_env == "snowflake":
-                engine = create_engine(URL(
-                    user=snflk_usr,
-                    password=snflk_pwd,
-                    account=snflk_act,
-                    database=snflk_db,
-                    schema=snflk_sch,
-                    warehouse=snflk_wh,
-                ))
-                nb_rec = LIM_REC_SNFLK
-        except Exception as e:
-            msg = f"Engine creation failed for DB {db_env} : {e}"
-            print(msg)
-            logging.exception(msg)
-            return False
-        try:
-            k = 1
-            terminated = False
-            # nb_loops = df.shape[0] // nb_rec + 1
-            while not terminated:
-                # print(f"Loop {k} on {nb_loops}")
-                if k * nb_rec < df.shape[0]:
-                    df_tmp = df[(k - 1) * nb_rec: k * nb_rec]
-                else:
-                    df_tmp = df[(k - 1) * nb_rec:]
-                    terminated = True
-
-                df_tmp.to_sql(name='FORECAST_DATA', con=engine, if_exists='append', index=False)
-                k += 1
-            return True
-        except Exception as e:
-            msg = f"Data insertion into table FORECAST_DATA failed : {e}"
+            msg = f"Data insertion into table {table_name} failed : {e}"
             print(msg)
             logging.exception(msg)
             return False

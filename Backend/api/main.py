@@ -32,7 +32,7 @@ origins = [
 ]
 
 app = FastAPI(
-    title='Weather API - Château Margaux',
+    title='Weather API - Weather Medoc Vineyards',
     description="API for the weather forecasting around les Châteaux du Médoc",
     version="1.0.1",
     openapi_tags=[
@@ -129,8 +129,8 @@ async def get_user_authenticated(current_user: Annotated[User, Depends(authent.g
 
 
 @app.get("/forecast_data/", tags=[ApiTags.endUser.value])
-async def get_forecast(city: Annotated[City, Depends()],
-                       current_user: Annotated[User, Depends(authent.get_current_user)]):
+async def get_forecast_data(city: Annotated[City, Depends()],
+                            current_user: Annotated[User, Depends(authent.get_current_user)]):
     """
     Return weather forecast data for the city in input for the next 7 days (data from table FORECAST)
     """
@@ -307,30 +307,32 @@ def get_db_info(current_user: Annotated[User, Depends(authent.get_current_active
 async def populate_weather_table(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """
-    Update table WEATHER_DATA with current data from Wheather API for all cities
-    Inputs :
+    Populate table WEATHER_DATA with historical data from weatherstack.com
+    \nInputs :
     \ncurrent user : authenticated user
     """
 
     if Permissions.Permissions.get_data.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    return await UserDataProc.insert_weather_data_historical()
+    result = await UserDataProc.insert_weather_data_historical()
+
+    return Handle_Result(result)
 
 
 @app.post("/update_weather_data", name='Update database with data from Weather API', tags=[ApiTags.weatherData.value])
 async def upd_weather_data(current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """
-    Update table WEATHER_DATA with current data from Wheather API for all cities
-    Inputs :
+    Update table WEATHER_DATA with current data from weatherstack API for all cities
+    \nInputs :
     \ncurrent user : authenticated user
     """
 
     if Permissions.Permissions.get_data.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-
-    return await UserDataProc.update_weather_data()
+    result = await UserDataProc.update_weather_data()
+    return Handle_Result(result)
 
 
 @app.post("/delete_weather_data", name='Empty table WEATHER_DATA', tags=[ApiTags.weatherData.value])
@@ -342,8 +344,7 @@ async def delete_weather_data(current_user: Annotated[User, Depends(authent.get_
 
     if Permissions.Permissions.get_data.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-
-    result = UserDao.empty_weather_data()
+    result = await UserDao.empty_weather_data()
     return Handle_Result(result)
 
 
@@ -356,8 +357,7 @@ async def delete_forecast_data(current_user: Annotated[User, Depends(authent.get
 
     if Permissions.Permissions.get_data.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-
-    result = UserDao.empty_forecast_data()
+    result = await UserDao.empty_forecast_data()
     return Handle_Result(result)
 
 
@@ -373,11 +373,13 @@ async def forecast(city: Annotated[City, Depends()],
 
     if Permissions.Permissions.forecast.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
-    result = Tools.get_forecast(city=city.name_city)
+
+    result = await Tools.get_forecast(city=city.name_city)
+
     return Handle_Result(result)
 
 
-@app.post("/train_model/{city}", name='Launch model training with a given set of hyperparamaters',
+@app.post("/train_model/{city}", name='Launch model training with a given set of hyperparameters',
           tags=[ApiTags.mlModel.value])
 async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParams,
                       train_label: str, current_user: Annotated[User, Depends(authent.get_current_active_user)]):

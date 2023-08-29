@@ -123,7 +123,7 @@ class Tools():
 
         return results_df
 
-    def get_forecast(city):
+    async def get_forecast(city):
         try:
             # Creating dates to have for inference
             fcst_date = UserDao.get_last_datetime_weather(city)
@@ -168,13 +168,14 @@ class Tools():
 
             df_total_pred = pd.concat([save_new_df, preds_df], ignore_index=True)
             preds_df['city'] = city
-            UserDao.send_forecast_data_from_df_to_db(preds_df)
+
+            await UserDao.send_data_from_df_to_db(preds_df, table_name='FORECAST_DATA')
 
             return {KeyReturn.success.value: df_total_pred}
 
         except Exception as e:
             logging.error(f"Forecast failed : {e}")
-            return {'error': "Forecast failed"}
+            return {f"{KeyReturn.error.value}: Forecast failed : {e}"}
 
     def train_model(city: str, hyper_params: HyperParams, train_label: str):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
@@ -258,7 +259,7 @@ class Tools():
         except Exception as e:
             return {KeyReturn.error.value: f"Training failed : {e}"}
 
-        return {'success': f"Training '{train_label}' terminated - Hyperparamaters : {hyper_params}"}
+        return {'success': f"Training '{train_label}' terminated - Hyperparameters : {hyper_params}"}
 
     def launch_trainings(city: str, hyper_params_dict, train_label: str):
         start_time = datetime.now()
