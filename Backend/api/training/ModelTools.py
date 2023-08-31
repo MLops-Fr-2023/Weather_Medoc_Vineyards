@@ -123,6 +123,37 @@ class Tools():
 
         return results_df
 
+    async def save_model_data(df1, metrics, train_label):
+        """
+        Save architecture, hyperparameters and metrics of a train model in a database SQL
+        """
+
+        # create a dataframe with all metrics
+        saved_metrics = pd.DataFrame(metrics, index=[0])
+        model_data = pd.concat([df1, saved_metrics], axis=1)
+
+        # Add run id and train label in the dataframe
+        run = mlflow.active_run()
+        run_id = run.info.run_id
+        model_data.insert(0, "MODEL_NAME", train_label)
+        model_data.insert(0, "RUN_NAME", run_id)
+        model_data.columns = model_data.columns.str.upper()
+
+        try:
+            success = await UserDao.send_data_from_df_to_db(model_data, table_name='MODEL_DATA')
+            if success:
+                msg = f"Model data {run_id} successfully updated\n"
+                print(msg)
+                logging.info(msg)
+
+        except Exception as e:
+            msg = f"Model data {run_id} failed because of {e}\n"
+            print(msg)
+            logging.exception(msg)
+            return {KeyReturn.error.value: msg}
+
+        return {KeyReturn.success.value: msg}
+
     async def get_forecast(city):
         try:
             # Creating dates to have for inference
@@ -233,16 +264,18 @@ class Tools():
 
                 mlflow.log_metrics(all_metrics)
 
+                # put hyper parameters in csv
                 arch = pd.DataFrame(index=[0])
                 for params in hyper_params.arch_config:
                     arch.insert(0, params[0], params[1])
                 arch.insert(0, "batch_size", hyper_params.batch_size)
-                arch.insert(0, "epochs number", hyper_params.n_epochs)
+                arch.insert(0, "epochs_number", hyper_params.n_epochs)
                 arch.insert(0, "fcst_history", hyper_params.fcst_history)
                 arch.insert(0, "fcst_horizon", hyper_params.fcst_horizon)
-                arch.insert(0, "learning rate", lr_max)
+                arch.insert(0, "learning_rate", lr_max)
                 arch.to_csv("hyper_parameters.csv")
-                print(arch)
+
+                # log hyper parameters, artifacts and metrics as artifacts in Mlflow
                 mlflow.log_artifact("hyper_parameters.csv")
                 for signal_name in df.columns[1:]:
                     mlflow.log_artifact(str(signal_name) + ".png")
@@ -251,11 +284,17 @@ class Tools():
                 results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
+                # log model in mlflow
                 model_name = train_label + '-' + city
                 mlflow.fastai.log_model(fastai_learner=learn,
                                         registered_model_name=model_name,
                                         artifact_path="model")
+
+                # save data of model in sql database
+                Tools.save_model_data(arch, all_metrics, train_label)
+
                 matplotlib.pyplot.close()
+
         except Exception as e:
             return {KeyReturn.error.value: f"Training failed : {e}"}
 
@@ -428,13 +467,28 @@ class Tools():
                 results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
+                # setup of model name taking account that it has 1 retrain by day
+                date = datetime.now()
+                year = date.year
+                month = date.month
+                day = date.day
+                model_name = f"Retrain-{year}-{month}-{day}"
 
+                # log model in mlflow
                 mlflow.fastai.log_model(fastai_learner=learn,
-                                        model_name=
+                                        registered_model_name=model_name,
                                         artifact_path="model")
 
+                # save data of model in sql database
+                arch = pd.DataFrame(index=[0])
+                arch.insert(0, "epochs_number", n_epochs)
+                arch.insert(0, "fcst_history", fcst_history)
+                arch.insert(0, "fcst_horizon", fcst_horizon)
+                arch.insert(0, "learning_rate", lr_max)
+                Tools.save_model_data(arch, all_metrics, train_label)
 
                 matplotlib.pyplot.close()
+
         except Exception as e:
             return {KeyReturn.error.value: f"Training failed : {e}"}
 
