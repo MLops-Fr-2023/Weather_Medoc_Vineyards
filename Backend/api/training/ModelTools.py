@@ -208,7 +208,7 @@ class Tools():
             logging.error(f"Forecast failed : {e}")
             return {f"{KeyReturn.error.value}: Forecast failed : {e}"}
 
-    def train_model(city: str, hyper_params: HyperParams, train_label: str):
+    async def train_model(city: str, hyper_params: HyperParams, train_label: str):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
@@ -291,7 +291,7 @@ class Tools():
                                         artifact_path="model")
 
                 # save data of model in sql database
-                Tools.save_model_data(arch, all_metrics, train_label)
+                await Tools.save_model_data(arch, all_metrics, train_label)
 
                 matplotlib.pyplot.close()
 
@@ -300,7 +300,7 @@ class Tools():
 
         return {'success': f"Training '{train_label}' terminated - Hyperparameters : {hyper_params}"}
 
-    def launch_trainings(city: str, hyper_params_dict, train_label: str):
+    async def launch_trainings(city: str, hyper_params_dict, train_label: str):
         start_time = datetime.now()
         try:
             for hp_key in hyper_params_dict.keys():
@@ -314,7 +314,7 @@ class Tools():
             logging.error(f"Trainings failed : {e}")
             return {KeyReturn.error.value: f"Trainings failed : {e}"}
 
-    def retrain(city: str, n_epochs: int):
+    async def retrain(city: str, n_epochs: int):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
@@ -393,7 +393,7 @@ class Tools():
                 arch.insert(0, "fcst_history", fcst_history)
                 arch.insert(0, "fcst_horizon", fcst_horizon)
                 arch.insert(0, "learning_rate", lr_max)
-                Tools.save_model_data(arch, all_metrics, train_label)
+                await Tools.save_model_data(arch, all_metrics, train_label)
 
                 matplotlib.pyplot.close()
 

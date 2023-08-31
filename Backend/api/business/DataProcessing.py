@@ -64,61 +64,66 @@ class UserDataProc():
             'hourly': '1',
             'interval': '3'
         }
+        try:
+            response = requests.get(UserDataProc.URL_HISTORICAL, params)
+            if response.status_code == 200:
+                data = response.json()
+                df_hist = pd.DataFrame(columns=["observation_time", "temperature", "weather_code", "wind_speed",
+                                                "wind_degree", "wind_dir", "pressure", "precip",
+                                                "humidity", "cloudcover", "feelslike", "uv_index",
+                                                "visibility", "time", "city"])
 
-        response = requests.get(UserDataProc.URL_HISTORICAL, params)
-        if response.status_code == 200:
-            data = response.json()
-            df_hist = pd.DataFrame(columns=["observation_time", "temperature", "weather_code", "wind_speed",
-                                            "wind_degree", "wind_dir", "pressure", "precip",
-                                            "humidity", "cloudcover", "feelslike", "uv_index",
-                                            "visibility", "time", "city"])
+                for date, date_data in data['historical'].items():
+                    for hourly_data in date_data['hourly']:
+                        temperature = hourly_data['temperature']
+                        weather_code = hourly_data['weather_code']
+                        wind_speed = hourly_data['wind_speed']
+                        wind_degree = hourly_data['wind_degree']
+                        wind_dir = hourly_data['wind_dir']
+                        pressure = hourly_data['pressure']
+                        precip = hourly_data['precip']
+                        humidity = hourly_data['humidity']
+                        cloudcover = hourly_data['cloudcover']
+                        feelslike = hourly_data['feelslike']
+                        uv_index = hourly_data['uv_index']
+                        visibility = hourly_data['visibility']
+                        time = hourly_data['time']
+                        city = city
 
-            for date, date_data in data['historical'].items():
-                for hourly_data in date_data['hourly']:
-                    temperature = hourly_data['temperature']
-                    weather_code = hourly_data['weather_code']
-                    wind_speed = hourly_data['wind_speed']
-                    wind_degree = hourly_data['wind_degree']
-                    wind_dir = hourly_data['wind_dir']
-                    pressure = hourly_data['pressure']
-                    precip = hourly_data['precip']
-                    humidity = hourly_data['humidity']
-                    cloudcover = hourly_data['cloudcover']
-                    feelslike = hourly_data['feelslike']
-                    uv_index = hourly_data['uv_index']
-                    visibility = hourly_data['visibility']
-                    time = hourly_data['time']
-                    city = city
-
-                    row = pd.DataFrame([{
-                        "observation_time": date,
-                        "temperature": temperature,
-                        "weather_code": weather_code,
-                        "wind_speed": wind_speed,
-                        "wind_degree": wind_degree,
-                        "wind_dir": wind_dir,
-                        "pressure": pressure,
-                        "precip": precip,
-                        "humidity": humidity,
-                        "cloudcover": cloudcover,
-                        "feelslike": feelslike,
-                        "uv_index": uv_index,
-                        "visibility": visibility,
-                        "time": time,
-                        "city": city
-                    }])
-                    df_hist = pd.concat([df_hist, row], ignore_index=True)
-                    df_hist['time'] = df_hist['time'].replace({
-                        '0': '00:0',
-                        '300': '03:00',
-                        '600': '06:00',
-                        '900': '09:00',
-                        '1200': '12:00',
-                        '1500': '15:00',
-                        '1800': '18:00',
-                        '2100': '21:00'})
-        else:
-            print(f"Failed to get data from WeatherStack API: {response.status_code}")
+                        row = pd.DataFrame([{
+                            "observation_time": date,
+                            "temperature": temperature,
+                            "weather_code": weather_code,
+                            "wind_speed": wind_speed,
+                            "wind_degree": wind_degree,
+                            "wind_dir": wind_dir,
+                            "pressure": pressure,
+                            "precip": precip,
+                            "humidity": humidity,
+                            "cloudcover": cloudcover,
+                            "feelslike": feelslike,
+                            "uv_index": uv_index,
+                            "visibility": visibility,
+                            "time": time,
+                            "city": city
+                        }])
+                        df_hist = pd.concat([df_hist, row], ignore_index=True)
+                        df_hist['time'] = df_hist['time'].replace({
+                            '0': '00:0',
+                            '300': '03:00',
+                            '600': '06:00',
+                            '900': '09:00',
+                            '1200': '12:00',
+                            '1500': '15:00',
+                            '1800': '18:00',
+                            '2100': '21:00'})
+            else:
+                print(f"Failed to get data from WeatherStack API: {response.status_code}")
+        except Exception as e:
+            msg = f"Failed to get data from WeatherStack API for '{city}' failed because of {e}\n"
+            print(msg)
+            logging.exception(msg)
+            return {KeyReturn.error.value: msg}
 
         return df_hist
 

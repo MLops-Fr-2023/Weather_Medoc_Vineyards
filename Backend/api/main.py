@@ -391,7 +391,7 @@ async def train_model(city: Annotated[City, Depends()], hyper_params: HyperParam
     if Permissions.Permissions.training.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    result = Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label=train_label)
+    result = await Tools.train_model(city=city.name_city, hyper_params=hyper_params, train_label=train_label)
     return Handle_Result(result)
 
 
@@ -408,7 +408,9 @@ async def train_models(city: Annotated[City, Depends()], train_label: str,
     if Permissions.Permissions.training.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    result = Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict, train_label=train_label)
+    result = await Tools.launch_trainings(city=city.name_city,
+                                          hyper_params_dict=hyper_params_dict,
+                                          train_label=train_label)
     return Handle_Result(result)
 
 
@@ -423,7 +425,7 @@ async def retrain_model(city: Annotated[City, Depends()], n_epochs: int,
     if Permissions.Permissions.training.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    result = Tools.retrain(city=city.name_city, n_epochs=n_epochs)
+    result = await Tools.retrain(city=city.name_city, n_epochs=n_epochs)
     return Handle_Result(result)
 
 if __name__ == "__main__":
