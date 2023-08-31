@@ -275,7 +275,7 @@ class Tools():
             logging.error(f"Trainings failed : {e}")
             return {KeyReturn.error.value: f"Trainings failed : {e}"}
 
-    def retrain(city: str, n_epochs: int):
+    def model_evaluation(city: str):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
@@ -287,17 +287,112 @@ class Tools():
         try:
             with mlflow.start_run():
 
+                fcst_history = Tools.fcst_history
+                fcst_horizon = Tools.fcst_horizon
+
                 splits = get_forecasting_splits(df,
-                                                fcst_history=Tools.fcst_history,
-                                                fcst_horizon=Tools.fcst_horizon,
+                                                fcst_history=fcst_history,
+                                                fcst_horizon=fcst_horizon,
                                                 datetime_col=Tools.datetime_col,
                                                 valid_size=Tools.valid_size,
                                                 test_size=Tools.test_size,
                                                 show_plot=False)
 
                 X, y = prepare_forecasting_data(df,
-                                                fcst_history=Tools.fcst_history,
-                                                fcst_horizon=Tools.fcst_horizon,
+                                                fcst_history=fcst_history,
+                                                fcst_horizon=fcst_horizon,
+                                                x_vars=Tools.columns_keep,
+                                                y_vars=Tools.columns_keep)
+
+                # loading of model
+                s3_root = str(varenv_inference_model.s3_root)
+                model_inference = str(varenv_inference_model.model_inference)
+                path_artifact = str(varenv_inference_model.path_artifact)
+                model_uri = f"{s3_root}{model_inference}{path_artifact}"
+
+                learn = mlflow.fastai.load_model(model_uri=model_uri)
+                print('model loaded')
+
+                # lr_max = learn.lr_find().valley
+                lr_max = 0.0025
+                scaled_preds, *_ = learn.get_X_preds(X[splits[1]])
+                scaled_preds = to_np(scaled_preds)
+
+                scaled_y_true = y[splits[1]]
+                results_df = pd.DataFrame(columns=["mse", "mae"])
+                results_df.loc["valid", "mse"] = mean_squared_error(scaled_y_true.flatten(), scaled_preds.flatten())
+                results_df.loc["valid", "mae"] = mean_absolute_error(scaled_y_true.flatten(), scaled_preds.flatten())
+
+
+                y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
+                y_test_preds = to_np(y_test_preds)
+                y_test = y[splits[2]]
+
+                varlist = Tools.get_var_data(y_test, hyper_params.fcst_horizon)
+                predlist = Tools.get_var_data(y_test_preds, hyper_params.fcst_horizon)
+                results_df = Tools.get_results(df, varlist, predlist)
+                all_metrics = Tools.get_all_metrics(results_df)
+                Tools.get_chart(df, varlist, predlist)
+
+
+                # fetch the auto logged parameters and metrics
+                for params in hyper_params.arch_config:
+                    mlflow.log_param(params[0], params[1])
+                mlflow.log_param("batch size", hyper_params.batch_size)
+                mlflow.log_param("epochs number", hyper_params.n_epochs)
+                mlflow.log_param("fcst_history", hyper_params.fcst_history)
+                mlflow.log_param("fcst_horizon", hyper_params.fcst_horizon)
+                mlflow.log_param("learning rate", lr_max)
+
+                mlflow.log_metrics(all_metrics)
+
+                for signal_name in df.columns[1:]:
+                    mlflow.log_artifact(str(signal_name) + ".png")
+                mlflow.log_artifact("predictions.png")
+                results_df.reset_index(inplace=True)
+                results_df.to_csv('scores.csv', index=True)
+                mlflow.log_artifact('scores.csv')
+
+                model_name = train_label + '-' + city
+                mlflow.fastai.log_model(fastai_learner=learn,
+                                        registered_model_name=model_name,
+                                        artifact_path="model")
+                matplotlib.pyplot.close()
+
+                logging.info(f"Retraining performed with model : {varenv_inference_model.model_inference}")
+
+                matplotlib.pyplot.close()
+        except Exception as e:
+            return {KeyReturn.error.value: f"Training failed : {e}"}
+
+        return {'success': "Retraining terminated with success"}
+
+    def retrain(city: str, n_epochs: int):
+        mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
+
+        # import data
+        df = UserDao.get_weather_data_df()
+
+        # transform data
+        df = Tools.transform_data(df, city)
+
+        try:
+            with mlflow.start_run():
+                
+                fcst_history = Tools.fcst_history
+                fcst_horizon = Tools.fcst_horizon
+
+                splits = get_forecasting_splits(df,
+                                                fcst_history=fcst_history,
+                                                fcst_horizon=fcst_horizon,
+                                                datetime_col=Tools.datetime_col,
+                                                valid_size=Tools.valid_size,
+                                                test_size=Tools.test_size,
+                                                show_plot=False)
+
+                X, y = prepare_forecasting_data(df,
+                                                fcst_history=fcst_history,
+                                                fcst_horizon=fcst_horizon,
                                                 x_vars=Tools.columns_keep,
                                                 y_vars=Tools.columns_keep)
 
@@ -318,8 +413,8 @@ class Tools():
                 y_test_preds = to_np(y_test_preds)
                 y_test = y[splits[2]]
 
-                varlist = Tools.get_var_data(y_test, Tools.fcst_horizon)
-                predlist = Tools.get_var_data(y_test_preds, Tools.fcst_horizon)
+                varlist = Tools.get_var_data(y_test, fcst_horizon)
+                predlist = Tools.get_var_data(y_test_preds, fcst_horizon)
                 results_df = Tools.get_results(df, varlist, predlist)
                 all_metrics = Tools.get_all_metrics(results_df)
                 Tools.get_chart(df, varlist, predlist)
@@ -333,7 +428,12 @@ class Tools():
                 results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
-                mlflow.fastai.log_model(fastai_learner=learn, artifact_path="model")
+
+                mlflow.fastai.log_model(fastai_learner=learn,
+                                        model_name=
+                                        artifact_path="model")
+
+
                 matplotlib.pyplot.close()
         except Exception as e:
             return {KeyReturn.error.value: f"Training failed : {e}"}
