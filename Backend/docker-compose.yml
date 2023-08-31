@@ -52,7 +52,6 @@ services:
       S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}
     ports:
       - 8000:8000      
-<<<<<<< HEAD
     deploy:
       resources:
         reservations:
@@ -60,26 +59,17 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-=======
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
->>>>>>> 9b7faaa (wis)
     networks:
-        - outside
-        - backend
-        - mlflow
+      - outside
+      - backend
+      - mlflow
 
   mlflow_postgresql:
     restart: always
     image: postgres:13
     container_name: mlflow_postgresql
     expose:
-        - 5432
+      - 5432
     environment:
       #PostgreSQL_MLflow
       MLFLOW_MUID: ${MLFLOW_MUID}
@@ -92,10 +82,10 @@ services:
       PGDATA: ${MLFLOW_PGDATA}
       BACKEND: ${MLFLOW_BACKEND}
     volumes:
-        - db_datapg_postresql_mlflow:/var/lib/postgresql/data/pgdata
-        - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
+      - db_datapg_postresql_mlflow:/var/lib/postgresql/data/pgdata
+      - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
     networks:
-        - mlflow 
+      - mlflow 
     healthcheck:
       test: pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB -p $$POSTGRES_PORT
       start_period: 5s
@@ -110,7 +100,7 @@ services:
     image: mlflow_server
     container_name: mlflow_server
     ports:
-        - 5001:5001
+      - 5001:5001
     environment:
       MLFLOW_MUID: ${MLFLOW_MUID}
       MLFLOW_MGID: ${MLFLOW_MGID}
@@ -129,20 +119,20 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
     volumes:
-        - mlrun_data:/mlruns
+      - mlrun_data:/mlruns
     command: 
-        - sh
-        - -c
-        - mlflow server
-            --port $${MLFLOW_PORT}
-            --host $${HOST_MLFLOW_IP}
-            --backend-store-uri $${MLFLOW_BACKEND} 
-            --default-artifact-root $${MLFLOW_ARTIFACTS}
-            --serve-artifacts
+      - sh
+      - -c
+      - mlflow server
+        --port $${MLFLOW_PORT}
+        --host $${HOST_MLFLOW_IP}
+        --backend-store-uri $${MLFLOW_BACKEND} 
+        --default-artifact-root $${MLFLOW_ARTIFACTS}
+        --serve-artifacts
     networks:
-        - proxy
-        - mlflow
-        - backend    
+      - proxy
+      - mlflow
+      - backend    
 
   airflow_postgresql:
     image: postgres:13
@@ -158,19 +148,19 @@ services:
       AIRFLOW_MUID: ${AIRFLOW_MUID}
       AIRFLOW_MGID: ${AIRFLOW_MGID}
     expose:
-        - 5432
+      - 5432
     volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
-        - db_datapg_postresql_airflow:/var/lib/postgresql/data/pgdata
-        - db_logs_postresql_airflow:/var/lib/postgresql/data/log
+      - /var/run/docker.sock:/var/run/docker.sock
+      - db_datapg_postresql_airflow:/var/lib/postgresql/data/pgdata
+      - db_logs_postresql_airflow:/var/lib/postgresql/data/log
     command: >
      postgres
-       -c listen_addresses=*
-       -c logging_collector=on
-       -c log_destination=stderr
-       -c max_connections=200
+      -c listen_addresses=*
+      -c logging_collector=on
+      -c log_destination=stderr
+      -c max_connections=200
     networks:
-        - airflow
+      - airflow
     healthcheck:
       test: pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB -p $$POSTGRES_PORT
       start_period: 5s
@@ -188,15 +178,15 @@ services:
       REDIS_PORT: ${REDIS_PORT}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
-        - 6379:6379
+      - 6379:6379
     command:
       - /bin/sh
       - -c
       - redis-server --requirepass $${REDIS_PASSWORD}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/redis-data:/data
+      - ${AIRFLOW_PROJ_DIR}/redis-data:/data
     networks:
-        - airflow
+      - airflow
     restart: always
 
   airflow_initdb:
@@ -225,17 +215,17 @@ services:
       AIRFLOW_PWD: ${AIRFLOW_PWD}
       AIRFLOW_EMAIL: ${AIRFLOW_EMAIL}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
+      - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+      - /var/run/docker.sock:/var/run/docker.sock
     command: 
       bash -c "airflow db init && airflow users create --firstname ${AIRFLOW_FIRSTNAME} --lastname ${AIRFLOW_LASTNAME} --email ${AIRFLOW_EMAIL} --password ${AIRFLOW_PWD} --username ${AIRFLOW_USERNAME} --role Admin"
     depends_on:
       airflow_postgresql:
         condition: service_healthy
     networks:
-        - airflow
+      - airflow
 
   airflow_flower:
     build:
@@ -260,17 +250,17 @@ services:
       AIRFLOW_USERNAME: ${AIRFLOW_USERNAME}
       AIRFLOW_PWD: ${AIRFLOW_PWD}    
     ports:
-        - 5555:5555
+      - 5555:5555
     depends_on:
       airflow_postgresql:
         condition: service_healthy
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
     command: celery flower
     networks:
-        - airflow
-        - backend
-        - proxy
+      - airflow
+      - backend
+      - proxy
     restart: always
 
   airflow_scheduler:
@@ -295,18 +285,18 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
+      - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+      - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
     depends_on:
       airflow_postgresql:
         condition: service_healthy
     restart: always
     networks:
-        - airflow
-        - backend
+      - airflow
+      - backend
 
   airflow_worker_1:
     build:
@@ -332,17 +322,17 @@ services:
       API_PWD: ${API_PWD}
       N_EPOCHS: ${N_EPOCHS}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
+      - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+      - /var/run/docker.sock:/var/run/docker.sock
     command: celery worker -H worker_1_name
     depends_on:  
       airflow_postgresql:
         condition: service_healthy
     networks:
-        - airflow
-        - backend
+      - airflow
+      - backend
     restart: always
 
   airflow_worker_2:
@@ -369,17 +359,17 @@ services:
       API_PWD: ${API_PWD}
       N_EPOCHS: ${N_EPOCHS}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
+      - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+      - /var/run/docker.sock:/var/run/docker.sock
     command: celery worker -H worker_2_name
     depends_on:  
       airflow_postgresql:
         condition: service_healthy
     networks:
-        - airflow
-        - backend
+      - airflow
+      - backend
     restart: always
 
   airflow_webserver:
@@ -403,12 +393,12 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
     ports:
-        - 8080:8080
+      - 8080:8080
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
-        - /var/run/docker.sock:/var/run/docker.sock
+      - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
+      - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
+      - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:  
       airflow_postgresql:
         condition: service_healthy
@@ -419,8 +409,8 @@ services:
       timeout: 30s
       retries: 5
     networks:
-        - airflow
-        - proxy
+      - airflow
+      - proxy
     restart: always
 
   nginx_proxy:
@@ -430,11 +420,11 @@ services:
     image: nginx_proxy
     container_name: nginx_proxy
     ports:
-        - 9000:9000
-        - 9001:9001
-        - 9002:9002
+      - 9000:9000
+      - 9001:9001
+      - 9002:9002
     networks:
-        - proxy
+      - proxy
     depends_on:
-        - mlflow_server
-        - airflow_flower
+      - mlflow_server
+      - airflow_flower

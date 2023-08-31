@@ -123,6 +123,16 @@ class Tools():
 
         return results_df
 
+    def save_model_data(df1, metrics, train_label):
+        saved_metrics = pd.DataFrame(metrics, index=[0])
+        model_data = pd.concat([df1, saved_metrics], axis = 1)
+        run = mlflow.active_run()
+        run_id = run.info.run_id
+        model_data.insert(0, "RUN_NAME", run_id)
+        model_data.insert(0, "MODEL_NAME", train_label)
+        model_data.columns = model_data.columns.str.upper()
+        UserDao.send_model_data_from_df_to_db(model_data)
+
     def get_forecast(city):
         try:
             # Creating dates to have for inference
@@ -224,11 +234,11 @@ class Tools():
                 # fetch the auto logged parameters and metrics
                 for params in hyper_params.arch_config:
                     mlflow.log_param(params[0], params[1])
-                mlflow.log_param("batch size", hyper_params.batch_size)
-                mlflow.log_param("epochs number", hyper_params.n_epochs)
+                mlflow.log_param("batch_size", hyper_params.batch_size)
+                mlflow.log_param("epochs_number", hyper_params.n_epochs)
                 mlflow.log_param("fcst_history", hyper_params.fcst_history)
                 mlflow.log_param("fcst_horizon", hyper_params.fcst_horizon)
-                mlflow.log_param("learning rate", lr_max)
+                mlflow.log_param("learning_rate", lr_max)
 
                 mlflow.log_metrics(all_metrics)
 
@@ -236,12 +246,12 @@ class Tools():
                 for params in hyper_params.arch_config:
                     arch.insert(0, params[0], params[1])
                 arch.insert(0, "batch_size", hyper_params.batch_size)
-                arch.insert(0, "epochs number", hyper_params.n_epochs)
+                arch.insert(0, "epochs_number", hyper_params.n_epochs)
                 arch.insert(0, "fcst_history", hyper_params.fcst_history)
                 arch.insert(0, "fcst_horizon", hyper_params.fcst_horizon)
-                arch.insert(0, "learning rate", lr_max)
+                arch.insert(0, "learning_rate", lr_max)
                 arch.to_csv("hyper_parameters.csv")
-                print(arch)
+
                 mlflow.log_artifact("hyper_parameters.csv")
                 for signal_name in df.columns[1:]:
                     mlflow.log_artifact(str(signal_name) + ".png")
@@ -254,7 +264,12 @@ class Tools():
                 mlflow.fastai.log_model(fastai_learner=learn,
                                         registered_model_name=model_name,
                                         artifact_path="model")
+                
+                # save data of model in sql database
+                Tools.save_model_data(arch, all_metrics, train_label)
+
                 matplotlib.pyplot.close()
+
         except Exception as e:
             return {KeyReturn.error.value: f"Training failed : {e}"}
 
@@ -285,18 +300,21 @@ class Tools():
 
         try:
             with mlflow.start_run():
+                
+                fcst_history = Tools.fcst_history
+                fcst_horizon = Tools.fcst_horizon
 
                 splits = get_forecasting_splits(df,
-                                                fcst_history=Tools.fcst_history,
-                                                fcst_horizon=Tools.fcst_horizon,
+                                                fcst_history=fcst_history,
+                                                fcst_horizon=fcst_horizon,
                                                 datetime_col=Tools.datetime_col,
                                                 valid_size=Tools.valid_size,
                                                 test_size=Tools.test_size,
                                                 show_plot=False)
 
                 X, y = prepare_forecasting_data(df,
-                                                fcst_history=Tools.fcst_history,
-                                                fcst_horizon=Tools.fcst_horizon,
+                                                fcst_history=fcst_history,
+                                                fcst_horizon=fcst_horizon,
                                                 x_vars=Tools.columns_keep,
                                                 y_vars=Tools.columns_keep)
 
@@ -317,8 +335,8 @@ class Tools():
                 y_test_preds = to_np(y_test_preds)
                 y_test = y[splits[2]]
 
-                varlist = Tools.get_var_data(y_test, Tools.fcst_horizon)
-                predlist = Tools.get_var_data(y_test_preds, Tools.fcst_horizon)
+                varlist = Tools.get_var_data(y_test, fcst_horizon)
+                predlist = Tools.get_var_data(y_test_preds, fcst_horizon)
                 results_df = Tools.get_results(df, varlist, predlist)
                 all_metrics = Tools.get_all_metrics(results_df)
                 Tools.get_chart(df, varlist, predlist)
@@ -332,8 +350,27 @@ class Tools():
                 results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
-                mlflow.fastai.log_model(fastai_learner=learn, artifact_path="model")
+                # setup of model name taking account that it has 1 retrain by day
+                date = datetime.now()
+                year = date.year
+                month = date.month
+                day = date.day
+                model_name = f"Retrain-{year}-{month}-{day}"
+
+                mlflow.fastai.log_model(fastai_learner=learn,
+                                        registered_model_name=model_name,
+                                        artifact_path="model")
+                
+                # save data of model in sql database
+                arch = pd.DataFrame(index=[0])
+                arch.insert(0, "epochs_number", n_epochs)
+                arch.insert(0, "fcst_history", fcst_history)
+                arch.insert(0, "fcst_horizon", fcst_horizon)
+                arch.insert(0, "learning_rate", lr_max)
+                Tools.save_model_data(arch, all_metrics, train_label = model_name)
+
                 matplotlib.pyplot.close()
+
         except Exception as e:
             return {KeyReturn.error.value: f"Training failed : {e}"}
 
