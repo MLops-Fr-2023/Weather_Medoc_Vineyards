@@ -13,7 +13,7 @@ jobs:
   test_python_3_10:
     name: Run Pytest (Python 3.10.11)
     runs-on: ubuntu-latest
-    
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/develop') || github.event_name != 'schedule'
     env:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       ALGORITHM: ${{ secrets.ALGORITHM }}
