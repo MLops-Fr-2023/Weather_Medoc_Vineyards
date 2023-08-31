@@ -68,7 +68,6 @@ class UserDataProc():
         response = requests.get(UserDataProc.URL_HISTORICAL, params)
         if response.status_code == 200:
             data = response.json()
-            print(f"\n response.json() : {data} \n")
             df_hist = pd.DataFrame(columns=["observation_time", "temperature", "weather_code", "wind_speed",
                                             "wind_degree", "wind_dir", "pressure", "precip",
                                             "humidity", "cloudcover", "feelslike", "uv_index",
