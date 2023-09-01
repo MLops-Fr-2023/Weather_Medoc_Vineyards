@@ -123,20 +123,6 @@ class Tools():
 
         return results_df
 
-    def define_model_name(root_name):
-        """
-        define the model name for Mlflow and tracking of model
-        According an Evaluation by day
-        """
-
-        date = datetime.now()
-        year = date.year
-        month = date.month
-        day = date.day
-        model_name = f"{root_name}-{year}-{month}-{day}"
-
-        return model_name
-
     async def save_model_data(df1, metrics, train_label):
         """
         Save architecture, hyperparameters and metrics of a train model in a database SQL
@@ -172,7 +158,7 @@ class Tools():
         """
         forecast weather data for a city
         """
-        
+
         try:
             # Creating dates to have for inference
             fcst_date = UserDao.get_last_datetime_weather(city)
@@ -416,8 +402,8 @@ class Tools():
             return {KeyReturn.error.value: f"Evaluation failed : {e}"}
 
         return {'success': "Evaluation terminated with success",
-                "TEMPERATURE_MSE" : all_metrics['TEMPERATURE_mse'],
-                "PRECIP_MSE" : all_metrics['PRECIP_mse']
+                "TEMPERATURE_MSE": all_metrics['TEMPERATURE_mse'],
+                "PRECIP_MSE": all_metrics['PRECIP_mse']
                 }
 
     async def retrain(city: str, n_epochs: int):
@@ -431,7 +417,7 @@ class Tools():
 
         try:
             with mlflow.start_run():
-                
+
                 fcst_history = Tools.fcst_history
                 fcst_horizon = Tools.fcst_horizon
 

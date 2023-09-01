@@ -84,7 +84,7 @@ def forecast_data(city):
     print('forecast data ' + str(city))
     token_type = Variable.get(key='token_type')
     access_token = Variable.get(key='access_token')
-    url = f"{API_BASE_URL}"+"/forecast_city/{city}?name_city=" + str(city)
+    url = f"{API_BASE_URL}" + "/forecast_city/{city}?name_city=" + str(city)
     print(url)
     headers = {
         "accept": "application/json",

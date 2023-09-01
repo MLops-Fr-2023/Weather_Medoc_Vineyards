@@ -408,13 +408,15 @@ async def train_models(city: Annotated[City, Depends()], train_label: str,
     if Permissions.Permissions.training.value not in current_user.permissions:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have the permission")
 
-    result = await Tools.launch_trainings(city=city.name_city, hyper_params_dict=hyper_params_dict, train_label=train_label)
+    result = await Tools.launch_trainings(city=city.name_city,
+                                          hyper_params_dict=hyper_params_dict,
+                                          train_label=train_label)
     return Handle_Result(result)
 
 
 @app.post("/evaluate_model/{city}", name='Launch a evaluation of the model', tags=[ApiTags.mlModel.value])
 async def evaluate_model(city: Annotated[City, Depends()],
-                        current_user: Annotated[User, Depends(authent.get_current_active_user)]):
+                         current_user: Annotated[User, Depends(authent.get_current_active_user)]):
 
     """
     Launch a evaluation of the current model on new data
@@ -425,6 +427,7 @@ async def evaluate_model(city: Annotated[City, Depends()],
 
     result = await Tools.model_evaluation(city=city.name_city)
     return Handle_Result(result)
+
 
 @app.post("/retrain_model/{city}", name='Launch a retraining of the model', tags=[ApiTags.mlModel.value])
 async def retrain_model(city: Annotated[City, Depends()], n_epochs: int,

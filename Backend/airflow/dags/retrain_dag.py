@@ -34,14 +34,14 @@ def get_token():
     Variable.set(key='access_token', value=access_token)
 
 
-def evaluation (task_instance):
+def evaluation(task_instance):
     """
     Connect to the api to evaluate the model
     """
     print('evaluation in progress')
     token_type = Variable.get(key='token_type')
     access_token = Variable.get(key='access_token')
-    url = f"{API_BASE_URL}"+"/evaluate_model/{city}?name_city=Margaux"
+    url = f"{API_BASE_URL}" + "/evaluate_model/{city}?name_city=Margaux"
     headers = {
         "accept": "application/json",
         "Authorization": f"{token_type} {access_token}"}
@@ -49,12 +49,12 @@ def evaluation (task_instance):
 
     if answer.status_code == 200:
         print(answer.json())
-        Temperature_mse= answer.json()['TEMPERATURE_MSE']
-        Precip_mse= answer.json()['PRECIP_MSE']
-        task_instance.xcom_push(key = 'temperature_mse',
-                                value = Temperature_mse)
-        task_instance.xcom_push(key = 'precip_mse',
-                                value = Precip_mse)
+        Temperature_mse = answer.json()['TEMPERATURE_MSE']
+        Precip_mse = answer.json()['PRECIP_MSE']
+        task_instance.xcom_push(key='temperature_mse',
+                                value=Temperature_mse)
+        task_instance.xcom_push(key='precip_mse',
+                                value=Precip_mse)
         return 'model evaluate'
     else:
         raise Exception("Retrain model failed with status code : ", answer.status_code)
@@ -62,16 +62,16 @@ def evaluation (task_instance):
 
 def retrain(task_instance):
 
-    Temperature_mse = task_instance.xcom_pull(key = 'temperature_mse',
-                                              task_ids = 'evaluation')    
-    Precip_mse = task_instance.xcom_pull(key = 'precip_mse',
-                                         task_ids = 'evaluation') 
+    Temperature_mse = task_instance.xcom_pull(key='temperature_mse',
+                                              task_ids='evaluation')
+    Precip_mse = task_instance.xcom_pull(key='precip_mse',
+                                         task_ids='evaluation')
 
-    if Temperature_mse > 6 or Precip_mse > 0.02:
+    if Temperature_mse > 6 or Precip_mse > 0.1:
         print('retrain in progress')
         token_type = Variable.get(key='token_type')
         access_token = Variable.get(key='access_token')
-        url = f"{API_BASE_URL}"+"/retrain_model/{city}?n_epochs=" + str(n_epochs) + "&name_city=Margaux"
+        url = f"{API_BASE_URL}" + "/retrain_model/{city}?n_epochs=" + str(n_epochs) + "&name_city=Margaux"
         headers = {
             "accept": "application/json",
             "Authorization": f"{token_type} {access_token}"}
@@ -83,7 +83,8 @@ def retrain(task_instance):
             raise Exception("Retrain model failed with status code : ", answer.status_code)
 
     else:
-        return f'not necessary to retrain the model, temperature mse : {Temperature_mse}, precipitation mse : {Precip_mse}'
+        return f"""not necessary to retrain the model, temperature mse : {Temperature_mse},
+        precipitation mse : {Precip_mse}"""
 
 
 my_dag = DAG(
