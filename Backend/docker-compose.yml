@@ -329,6 +329,8 @@ services:
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       API_USER: ${API_USER}
       API_PWD: ${API_PWD}
+      N_EPOCHS: ${N_EPOCHS}
+      API_BASE_URL: ${API_BASE_URL}
     volumes:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
@@ -365,6 +367,8 @@ services:
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
       API_USER: ${API_USER}
       API_PWD: ${API_PWD}
+      N_EPOCHS: ${N_EPOCHS}
+      API_BASE_URL: ${API_BASE_URL}
     volumes:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs

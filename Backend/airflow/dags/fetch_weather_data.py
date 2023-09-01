@@ -7,6 +7,7 @@ import os
 
 user_name = os.environ.get('API_USER')
 pwd = os.environ.get('API_PWD')
+API_BASE_URL = os.environ.get('API_BASE_URL')
 
 cities = {
     "Arsac": "Arsac",
@@ -28,7 +29,7 @@ my_dag = DAG(
 
 def get_token():
     print('get token')
-    url_token = 'http://api:8000/token'
+    url_token = f'{API_BASE_URL}/token'
     headers = {
         "accept": "application/json",
         "Content-Type": "application/x-www-form-urlencoded"}
@@ -50,7 +51,7 @@ def update_weather_data():
     print('update_weather_data running')
     token_type = Variable.get(key='token_type')
     access_token = Variable.get(key='access_token')
-    url = 'http://api:8000/update_weather_data'
+    url = f'{API_BASE_URL}/update_weather_data'
     headers = {
         "accept": "application/json",
         "Authorization": f"{token_type} {access_token}"}
@@ -67,7 +68,7 @@ def delete_forecast_data():
     print('delete forecast data')
     token_type = Variable.get(key='token_type')
     access_token = Variable.get(key='access_token')
-    url = 'http://api:8000/delete_forecast_data/'
+    url = f'{API_BASE_URL}/delete_forecast_data/'
     headers = {
         "accept": "application/json",
         "Authorization": f"{token_type} {access_token}"}
@@ -83,7 +84,7 @@ def forecast_data(city):
     print('forecast data ' + str(city))
     token_type = Variable.get(key='token_type')
     access_token = Variable.get(key='access_token')
-    url = 'http://api:8000/forecast_city/{city}?name_city=' + str(city)
+    url = f"{API_BASE_URL}" + "/forecast_city/{city}?name_city=" + str(city)
     print(url)
     headers = {
         "accept": "application/json",
