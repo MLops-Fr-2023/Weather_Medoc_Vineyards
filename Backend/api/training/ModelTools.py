@@ -123,6 +123,20 @@ class Tools():
 
         return results_df
 
+    def define_model_name(root_name):
+        """
+        define the model name for Mlflow and tracking of model
+        According an Evaluation by day
+        """
+
+        date = datetime.now()
+        year = date.year
+        month = date.month
+        day = date.day
+        model_name = f"{root_name}-{year}-{month}-{day}"
+
+        return model_name
+
     async def save_model_data(df1, metrics, train_label):
         """
         Save architecture, hyperparameters and metrics of a train model in a database SQL
@@ -155,6 +169,10 @@ class Tools():
         return {KeyReturn.success.value: msg}
 
     async def get_forecast(city):
+        """
+        forecast weather data for a city
+        """
+        
         try:
             # Creating dates to have for inference
             fcst_date = UserDao.get_last_datetime_weather(city)
@@ -208,7 +226,7 @@ class Tools():
             logging.error(f"Forecast failed : {e}")
             return {f"{KeyReturn.error.value}: Forecast failed : {e}"}
 
-    def train_model(city: str, hyper_params: HyperParams, train_label: str):
+    async def train_model(city: str, hyper_params: HyperParams, train_label: str):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
@@ -291,7 +309,7 @@ class Tools():
                                         artifact_path="model")
 
                 # save data of model in sql database
-                Tools.save_model_data(arch, all_metrics, train_label)
+                await Tools.save_model_data(arch, all_metrics, train_label)
 
                 matplotlib.pyplot.close()
 
@@ -300,12 +318,12 @@ class Tools():
 
         return {'success': f"Training '{train_label}' terminated - Hyperparameters : {hyper_params}"}
 
-    def launch_trainings(city: str, hyper_params_dict, train_label: str):
+    async def launch_trainings(city: str, hyper_params_dict, train_label: str):
         start_time = datetime.now()
         try:
             for hp_key in hyper_params_dict.keys():
                 data = hyper_params_dict[hp_key]
-                Tools.train_model(city=city, hyper_params=data, train_label=train_label)
+                await Tools.train_model(city=city, hyper_params=data, train_label=train_label)
                 logging.error(f"Trained model successfully with hyperparameters : {data}")
 
             total_time = datetime.now() - start_time
@@ -314,7 +332,7 @@ class Tools():
             logging.error(f"Trainings failed : {e}")
             return {KeyReturn.error.value: f"Trainings failed : {e}"}
 
-    def model_evaluation(city: str):
+    async def model_evaluation(city: str):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
@@ -352,37 +370,23 @@ class Tools():
                 learn = mlflow.fastai.load_model(model_uri=model_uri)
                 print('model loaded')
 
-                # lr_max = learn.lr_find().valley
-                lr_max = 0.0025
-                scaled_preds, *_ = learn.get_X_preds(X[splits[1]])
-                scaled_preds = to_np(scaled_preds)
+                y_valid_preds, *_ = learn.get_X_preds(X[splits[2]])
+                y_valid_preds = to_np(y_valid_preds)
+                y_valid = y[splits[2]]
 
-                scaled_y_true = y[splits[1]]
-                results_df = pd.DataFrame(columns=["mse", "mae"])
-                results_df.loc["valid", "mse"] = mean_squared_error(scaled_y_true.flatten(), scaled_preds.flatten())
-                results_df.loc["valid", "mae"] = mean_absolute_error(scaled_y_true.flatten(), scaled_preds.flatten())
-
-
-                y_test_preds, *_ = learn.get_X_preds(X[splits[2]])
-                y_test_preds = to_np(y_test_preds)
-                y_test = y[splits[2]]
-
-                varlist = Tools.get_var_data(y_test, hyper_params.fcst_horizon)
-                predlist = Tools.get_var_data(y_test_preds, hyper_params.fcst_horizon)
+                varlist = Tools.get_var_data(y_valid, fcst_horizon)
+                predlist = Tools.get_var_data(y_valid_preds, fcst_horizon)
                 results_df = Tools.get_results(df, varlist, predlist)
                 all_metrics = Tools.get_all_metrics(results_df)
+                print(all_metrics)
+
                 Tools.get_chart(df, varlist, predlist)
 
+                logging.info(f"Model evaluation performed with model : {varenv_inference_model.model_inference}")
 
                 # fetch the auto logged parameters and metrics
-                for params in hyper_params.arch_config:
-                    mlflow.log_param(params[0], params[1])
-                mlflow.log_param("batch size", hyper_params.batch_size)
-                mlflow.log_param("epochs number", hyper_params.n_epochs)
-                mlflow.log_param("fcst_history", hyper_params.fcst_history)
-                mlflow.log_param("fcst_horizon", hyper_params.fcst_horizon)
-                mlflow.log_param("learning rate", lr_max)
-
+                mlflow.log_param("fcst_history", fcst_history)
+                mlflow.log_param("fcst_horizon", fcst_horizon)
                 mlflow.log_metrics(all_metrics)
 
                 for signal_name in df.columns[1:]:
@@ -392,21 +396,31 @@ class Tools():
                 results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
-                model_name = train_label + '-' + city
+                # setup of model name taking account that it has 1 evaluation by day
+                model_name = Tools.define_model_name('Evaluation')
                 mlflow.fastai.log_model(fastai_learner=learn,
                                         registered_model_name=model_name,
                                         artifact_path="model")
-                matplotlib.pyplot.close()
-
-                logging.info(f"Retraining performed with model : {varenv_inference_model.model_inference}")
 
                 matplotlib.pyplot.close()
+
+                # save data of model in sql database
+                arch = pd.DataFrame(index=[0])
+                arch.insert(0, "fcst_history", fcst_history)
+                arch.insert(0, "fcst_horizon", fcst_horizon)
+                await Tools.save_model_data(arch, all_metrics, model_name)
+
+                matplotlib.pyplot.close()
+
         except Exception as e:
-            return {KeyReturn.error.value: f"Training failed : {e}"}
+            return {KeyReturn.error.value: f"Evaluation failed : {e}"}
 
-        return {'success': "Retraining terminated with success"}
+        return {'success': "Evaluation terminated with success",
+                "TEMPERATURE_MSE" : all_metrics['TEMPERATURE_mse'],
+                "PRECIP_MSE" : all_metrics['PRECIP_mse']
+                }
 
-    def retrain(city: str, n_epochs: int):
+    async def retrain(city: str, n_epochs: int):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
@@ -467,12 +481,8 @@ class Tools():
                 results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
-                # setup of model name taking account that it has 1 retrain by day
-                date = datetime.now()
-                year = date.year
-                month = date.month
-                day = date.day
-                model_name = f"Retrain-{year}-{month}-{day}"
+                # setup of model name
+                model_name = Tools.define_model_name('Retrain')
 
                 # log model in mlflow
                 mlflow.fastai.log_model(fastai_learner=learn,
@@ -485,7 +495,7 @@ class Tools():
                 arch.insert(0, "fcst_history", fcst_history)
                 arch.insert(0, "fcst_horizon", fcst_horizon)
                 arch.insert(0, "learning_rate", lr_max)
-                Tools.save_model_data(arch, all_metrics, train_label)
+                await Tools.save_model_data(arch, all_metrics, model_name)
 
                 matplotlib.pyplot.close()
 
