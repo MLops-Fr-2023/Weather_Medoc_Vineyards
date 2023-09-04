@@ -123,6 +123,14 @@ class Tools():
 
         return results_df
 
+    def define_model_name(root_source):
+        Today = datetime.now()
+        year = Today.year
+        month = Today.month
+        day = Today.day
+
+        return f"{root_source}-{year}-{month}-{day}"
+
     async def save_model_data(df1, metrics, train_label):
         """
         Save architecture, hyperparameters and metrics of a train model in a database SQL
@@ -155,6 +163,10 @@ class Tools():
         return {KeyReturn.success.value: msg}
 
     async def get_forecast(city):
+        """
+        forecast weather data for a city
+        """
+
         try:
             # Creating dates to have for inference
             fcst_date = UserDao.get_last_datetime_weather(city)
@@ -208,7 +220,7 @@ class Tools():
             logging.error(f"Forecast failed : {e}")
             return {f"{KeyReturn.error.value}: Forecast failed : {e}"}
 
-    def train_model(city: str, hyper_params: HyperParams, train_label: str):
+    async def train_model(city: str, hyper_params: HyperParams, train_label: str):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
@@ -291,7 +303,7 @@ class Tools():
                                         artifact_path="model")
 
                 # save data of model in sql database
-                Tools.save_model_data(arch, all_metrics, train_label)
+                await Tools.save_model_data(arch, all_metrics, train_label)
 
                 matplotlib.pyplot.close()
 
@@ -300,12 +312,12 @@ class Tools():
 
         return {'success': f"Training '{train_label}' terminated - Hyperparameters : {hyper_params}"}
 
-    def launch_trainings(city: str, hyper_params_dict, train_label: str):
+    async def launch_trainings(city: str, hyper_params_dict, train_label: str):
         start_time = datetime.now()
         try:
             for hp_key in hyper_params_dict.keys():
                 data = hyper_params_dict[hp_key]
-                Tools.train_model(city=city, hyper_params=data, train_label=train_label)
+                await Tools.train_model(city=city, hyper_params=data, train_label=train_label)
                 logging.error(f"Trained model successfully with hyperparameters : {data}")
 
             total_time = datetime.now() - start_time
@@ -314,7 +326,95 @@ class Tools():
             logging.error(f"Trainings failed : {e}")
             return {KeyReturn.error.value: f"Trainings failed : {e}"}
 
-    def retrain(city: str, n_epochs: int):
+    async def model_evaluation(city: str):
+        mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
+
+        # import data
+        df = UserDao.get_weather_data_df()
+
+        # transform data
+        df = Tools.transform_data(df, city)
+
+        try:
+            with mlflow.start_run():
+
+                fcst_history = Tools.fcst_history
+                fcst_horizon = Tools.fcst_horizon
+
+                splits = get_forecasting_splits(df,
+                                                fcst_history=fcst_history,
+                                                fcst_horizon=fcst_horizon,
+                                                datetime_col=Tools.datetime_col,
+                                                valid_size=Tools.valid_size,
+                                                test_size=Tools.test_size,
+                                                show_plot=False)
+
+                X, y = prepare_forecasting_data(df,
+                                                fcst_history=fcst_history,
+                                                fcst_horizon=fcst_horizon,
+                                                x_vars=Tools.columns_keep,
+                                                y_vars=Tools.columns_keep)
+
+                # loading of model
+                s3_root = str(varenv_inference_model.s3_root)
+                model_inference = str(varenv_inference_model.model_inference)
+                path_artifact = str(varenv_inference_model.path_artifact)
+                model_uri = f"{s3_root}{model_inference}{path_artifact}"
+
+                learn = mlflow.fastai.load_model(model_uri=model_uri)
+                print('model loaded')
+
+                y_valid_preds, *_ = learn.get_X_preds(X[splits[2]])
+                y_valid_preds = to_np(y_valid_preds)
+                y_valid = y[splits[2]]
+
+                varlist = Tools.get_var_data(y_valid, fcst_horizon)
+                predlist = Tools.get_var_data(y_valid_preds, fcst_horizon)
+                results_df = Tools.get_results(df, varlist, predlist)
+                all_metrics = Tools.get_all_metrics(results_df)
+                print(all_metrics)
+
+                Tools.get_chart(df, varlist, predlist)
+
+                logging.info(f"Model evaluation performed with model : {varenv_inference_model.model_inference}")
+
+                # fetch the auto logged parameters and metrics
+                mlflow.log_param("fcst_history", fcst_history)
+                mlflow.log_param("fcst_horizon", fcst_horizon)
+                mlflow.log_metrics(all_metrics)
+
+                for signal_name in df.columns[1:]:
+                    mlflow.log_artifact(str(signal_name) + ".png")
+                mlflow.log_artifact("predictions.png")
+                results_df.reset_index(inplace=True)
+                results_df.to_csv('scores.csv', index=True)
+                mlflow.log_artifact('scores.csv')
+
+                # setup of model name taking account that it has 1 evaluation by day
+                model_name = Tools.define_model_name('Evaluation')
+                mlflow.fastai.log_model(fastai_learner=learn,
+                                        registered_model_name=model_name,
+                                        artifact_path="model")
+
+                matplotlib.pyplot.close()
+
+                # save data of model in sql database
+                arch = pd.DataFrame(index=[0])
+                arch.insert(0, "fcst_history", fcst_history)
+                arch.insert(0, "fcst_horizon", fcst_horizon)
+                await Tools.save_model_data(arch, all_metrics, model_name)
+
+                matplotlib.pyplot.close()
+
+        except Exception as e:
+            return {KeyReturn.error.value: f"Evaluation failed : {e}"}
+
+        return {'success': "Evaluation terminated with success",
+                "TEMPERATURE_MSE": all_metrics['TEMPERATURE_mse'],
+                "PRECIP_MSE": all_metrics['PRECIP_mse']
+                }
+
+    async def retrain(city: str, n_epochs: int):
         mlflow.set_tracking_uri(varenv_mlflow.mlflow_server_port)
 
         # import data
@@ -375,12 +475,8 @@ class Tools():
                 results_df.to_csv('scores.csv', index=True)
                 mlflow.log_artifact('scores.csv')
 
-                # setup of model name taking account that it has 1 retrain by day
-                date = datetime.now()
-                year = date.year
-                month = date.month
-                day = date.day
-                model_name = f"Retrain-{year}-{month}-{day}"
+                # setup of model name
+                model_name = Tools.define_model_name('Retrain')
 
                 # log model in mlflow
                 mlflow.fastai.log_model(fastai_learner=learn,
@@ -393,7 +489,7 @@ class Tools():
                 arch.insert(0, "fcst_history", fcst_history)
                 arch.insert(0, "fcst_horizon", fcst_horizon)
                 arch.insert(0, "learning_rate", lr_max)
-                Tools.save_model_data(arch, all_metrics, train_label)
+                await Tools.save_model_data(arch, all_metrics, model_name)
 
                 matplotlib.pyplot.close()
 
