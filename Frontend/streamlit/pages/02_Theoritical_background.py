@@ -149,7 +149,7 @@ def main():
                 st.image(images_path + 'Maps_cities.png', channels="RGB", output_format="auto")
 
     if choice == page_api_db:
-        st.title(f"{page_api_db}")
+        st.markdown("## MySql Database")
         cols = st.columns([0.5, 0.5, 0.5])
         with cols[0]:
             st.markdown("### Users and permissions")
@@ -220,6 +220,23 @@ def main():
             st.markdown("""
                 - get welcome message
             """)
+
+        st.markdown("---")
+        st.markdown("## Characteristics")
+        st.markdown("""
+                    - Bearer token based authentication (token must be injected in http headers to authenticate)
+                    - uses **OAuth2PasswordRequestForm** to get data from user
+                    - data validation with pydantic
+                    """)
+
+        st.markdown("## Testing")
+        st.markdown("""
+                    - Endpoints tested with pytest
+                    - launched
+                      - automatically on every change on Pull Requests
+                      - manually on branch develop (usually a pull request merged)
+                    - data validation with pydantic
+                    """)
 
     if choice == page_infrastruct:
         col1, col2, col3 = st.columns([0.5, 8, 0.5])
