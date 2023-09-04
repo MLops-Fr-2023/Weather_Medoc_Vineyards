@@ -24,7 +24,7 @@ def main():
                  channels="RGB", output_format="JPEG", width=250)
     with c3:
         st.subheader('Jacques Drouvroy')
-        st.image(images_path + 'jacques_douvroy.jpg',
+        st.image(images_path + 'jacques_drouvroy.jpg',
                  channels="RGB", output_format="JPEG", width=250)
 
     c1, c2, c3 = st.columns(3, gap="large")

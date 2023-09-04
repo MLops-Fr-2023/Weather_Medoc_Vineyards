@@ -7,6 +7,7 @@ images_path = tools.get_images_path()
 page_intro = "Introduction"
 page_data_ctxt = "Data context"
 page_api_db = "API and SQL database"
+page_model_tracking = "Model tracking"
 page_infrastruct = "Infrastructure"
 page_transformers = "Transformers"
 
@@ -14,7 +15,7 @@ page_transformers = "Transformers"
 def display_page_title():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.title('Theoritical background')
+        st.title('Project background')
         c1, c2, c3, c4 = st.columns(4, gap="large")
     st.markdown("""---""")
 
@@ -23,7 +24,8 @@ def main():
 
     display_page_title()
 
-    choice = st.sidebar.radio("Submenu", [page_intro, page_data_ctxt, page_api_db, page_infrastruct, page_transformers])
+    choice = st.sidebar.radio("Submenu", [page_intro, page_data_ctxt, page_api_db, page_model_tracking,
+                                          page_infrastruct, page_transformers])
 
     if choice == page_intro:
         col1, col2, col3 = st.columns([0.5, 8, 0.5])
@@ -148,13 +150,16 @@ def main():
 
     if choice == page_api_db:
         st.title(f"{page_api_db}")
-        cols = st.columns([0.5, 0.5])
+        cols = st.columns([0.5, 0.5, 0.5])
         with cols[0]:
             st.markdown("### Users and permissions")
             st.image(images_path + 'db_sql_users_perms.png', channels="RGB", output_format="auto")
         with cols[1]:
             st.markdown("### Weather data")
             st.image(images_path + 'db_sql_weather_data.png', channels="RGB", output_format="auto")
+        with cols[2]:
+            st.markdown("### Model data")
+            st.image(images_path + 'db_sql_model_data.png', channels="RGB", output_format="auto")
 
         st.markdown("---")
 
@@ -186,6 +191,7 @@ def main():
             st.markdown("##### Machine Learning Model")
             st.markdown("""
                 - launch training of the model with a specific set of parameters
+                - launch evaluation of the model
                 - launch several training of the model with different sets of parameters
                 - retrain the model with most recent data
             """)
@@ -208,6 +214,7 @@ def main():
             st.markdown("##### End user")
             st.markdown("""
                 - get forecast data for a city from table FORECAST_DATA
+                - get historical on a period from table WEATHER_DATA
             """)
             st.markdown("##### Default")
             st.markdown("""
@@ -396,6 +403,96 @@ def main():
                 with col2:
                     st.image(images_path + 'architecture_microservice.jpg',
                              channels="RGB", output_format="auto", use_column_width='auto')
+        st.markdown("""---""")
+
+    if choice == page_model_tracking:
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.title('Context')
+            st.markdown("""---""")
+            st.write(""" In order to track the model, it is mandatory.
+                     \n - To have update data .
+                     \n - To check its metrics regulary.
+                     \n - To retrain it if necessary.
+                     \n
+                     \nTo be able to achieve it, Airflow, Mlfow and tha API are used. Airflow will launch automtic task,
+                     Mlflow will manage the model tracking and the roots of the API are used. Two DAGs are define :
+                     \nFirst one to update data and forecast weather for the users each 3 hours.
+                     \nSecond one which evaluate the model and retain it if necessary once a day.""")
+
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.image(images_path + 'airflow_dags.jpg',
+                     channels="RGB", output_format="auto", use_column_width='auto')
+        st.markdown("""---""")
+
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.title('Update data, forecast weather')
+            st.markdown("""---""")
+            st.write(""" To have updated data, Airflow and the API are used.
+                     \nAirflow to have a DAG which will get the API root to have the token to access the API.
+                      And token are saved in Variable to be used be next task.
+                     \n
+                     \nOnce done, two tasks are launch in the same time, once to update data with the weatherstack api,
+                     and the other to delete user forecast data.
+                     \nTo finish forecast weather is done on all cities in the same time, during this step two tables of
+                      the DB are fullfill, WEATHER_DATA and FORECAST_DATA.""")
+
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.image(images_path + 'airflow_fetch_data.jpg',
+                     channels="RGB", output_format="auto", use_column_width='auto')
+        st.markdown("""---""")
+
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.title('Model evaluation')
+            st.markdown("""---""")
+            st.write("""As to update data, the first task is to get the token.
+                     After the evaluation is done. If success two metrics are push to the next step,
+                     the meansquared error of temperature and precipitation, which are the two important metrics
+                     for this application.
+                     \nIf temperature mse is higher than 5 or precipitation mse is higher than 0.1 the model is
+                     retrained with all data.
+                     \nAll evaluation, retrain are track by mlflow, with specific model name, and a backup is also
+                     done on DB in the table MODEL_DATA.
+                     """)
+            col1, col2, col3 = st.columns([0.5, 2, 0.5])
+            with col2:
+                st.image(images_path + 'airflow_evaluation.jpg',
+                         channels="RGB", output_format="auto", use_column_width='auto')
+        st.markdown("""---""")
+
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.title('Views of Mlflow tracking')
+            st.markdown("""---""")
+            st.write("""As explain all data can be managed by Mlflow to compare model
+                     """)
+            st.markdown("""---""")
+        st.write("""
+                      Here a view of the functionnal aspect of MLflow Tracking:""")
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.image(images_path + 'MLflow_table.jpg',
+                     channels="RGB", output_format="auto", use_column_width='auto')
+        st.write("""
+                      \nHere a view of charts aspect of MLflow Tracking:""")
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.image(images_path + 'MLflow_chart1.jpg',
+                     channels="RGB", output_format="auto", use_column_width='auto')
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.image(images_path + 'MLflow_chart2.jpg',
+                     channels="RGB", output_format="auto", use_column_width='auto')
+        st.write("""
+                 Some filters can be used to have a clear view:""")
+        col1, col2, col3 = st.columns([0.5, 8, 0.5])
+        with col2:
+            st.image(images_path + 'MLflow_filter.jpg',
+                     channels="RGB", output_format="auto", use_column_width='auto')
         st.markdown("""---""")
 
     if choice == page_transformers:

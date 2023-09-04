@@ -63,7 +63,7 @@ def display_side_bar():
             with col3:
                 display_linkedin_github_links(linkedin_nicolas, github_nicolas)
 
-        with st.expander("Jacques Douvroy"):
+        with st.expander("Jacques Drouvroy"):
             col1, col2, col3 = st.columns([1, 0.5, 1])
             with col1:
                 display_linkedin_github_pics()
