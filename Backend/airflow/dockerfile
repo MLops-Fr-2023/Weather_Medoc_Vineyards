@@ -12,7 +12,7 @@ RUN apt-get update && \
     apt-get install -y git && \
     apt-get install -y vim libpq-dev
 
-USER airflow
+#USER airflow
 
 RUN pip install --upgrade pip
 RUN pip install --user psycopg2-binary
