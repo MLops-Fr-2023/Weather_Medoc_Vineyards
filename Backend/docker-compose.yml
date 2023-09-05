@@ -85,7 +85,7 @@ services:
         - db_datapg_postresql_mlflow:/var/lib/postgresql/data/pgdata
         - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
     networks:
-        - mlflow
+        - mlflow 
  
  
  
@@ -223,9 +223,9 @@ services:
       AIRFLOW_PWD: ${AIRFLOW_PWD}
       AIRFLOW_EMAIL: ${AIRFLOW_EMAIL}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
-        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
-        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - ${AIRFLOW_PROJ_DIR}/dags
+        - ${AIRFLOW_PROJ_DIR}/logs
+        - ${AIRFLOW_PROJ_DIR}/files
         - /var/run/docker.sock:/var/run/docker.sock
     # entrypoint: /bin/bash
     command: 
