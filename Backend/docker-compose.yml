@@ -86,9 +86,6 @@ services:
         - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
     networks:
         - mlflow 
- 
- 
- 
     healthcheck:
       test: pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB -p $$POSTGRES_PORT
       start_period: 5s

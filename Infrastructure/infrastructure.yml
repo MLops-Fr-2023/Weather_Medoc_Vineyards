@@ -456,6 +456,7 @@ Resources:
           if [ -d "Weather_Medoc_Vineyards" ]; then
             rm -rf Weather_Medoc_Vineyards
           fi
+          sudo chown ubuntu /opt/airflow/scheduler
           git clone -b 20230905_JDR_Infra_fix_Airflow https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git          
           cd /home/ubuntu/Weather_Medoc_Vineyards/Backend
           sudo gdown --fuzzy ${FileEnvPrdBack}
