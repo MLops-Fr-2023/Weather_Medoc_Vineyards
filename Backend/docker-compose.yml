@@ -220,9 +220,9 @@ services:
       AIRFLOW_PWD: ${AIRFLOW_PWD}
       AIRFLOW_EMAIL: ${AIRFLOW_EMAIL}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags
-        - ${AIRFLOW_PROJ_DIR}/logs
-        - ${AIRFLOW_PROJ_DIR}/files
+        - ${AIRFLOW_PROJ_DIR}/dags: /opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs: /opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files: /opt/airflow/files
         - /var/run/docker.sock:/var/run/docker.sock
     # entrypoint: /bin/bash
     command: 
@@ -291,9 +291,9 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       AIRFLOW__CELERY__BROKER_URL: ${AIRFLOW__CELERY__BROKER_URL}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags
-        - ${AIRFLOW_PROJ_DIR}/logs
-        - ${AIRFLOW_PROJ_DIR}/files
+        - ${AIRFLOW_PROJ_DIR}/dags: /opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs: /opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files: /opt/airflow/files
         - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
     depends_on:
@@ -329,9 +329,9 @@ services:
       N_EPOCHS: ${N_EPOCHS}
       API_BASE_URL: ${API_BASE_URL}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags
-        - ${AIRFLOW_PROJ_DIR}/logs
-        - ${AIRFLOW_PROJ_DIR}/files
+        - ${AIRFLOW_PROJ_DIR}/dags: /opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs: /opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files: /opt/airflow/files
         - /var/run/docker.sock:/var/run/docker.sock
     command: celery worker -H worker_1_name
     depends_on:  
@@ -367,9 +367,9 @@ services:
       N_EPOCHS: ${N_EPOCHS}
       API_BASE_URL: ${API_BASE_URL}
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/dags
-        - ${AIRFLOW_PROJ_DIR}/logs
-        - ${AIRFLOW_PROJ_DIR}/files
+        - ${AIRFLOW_PROJ_DIR}/dags: /opt/airflow/dags
+        - ${AIRFLOW_PROJ_DIR}/logs: /opt/airflow/logs
+        - ${AIRFLOW_PROJ_DIR}/files: /opt/airflow/files
         - /var/run/docker.sock:/var/run/docker.sock
     command: celery worker -H worker_2_name
     depends_on:  
