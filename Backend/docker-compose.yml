@@ -261,7 +261,7 @@ services:
       airflow_postgresql:
         condition: service_healthy
     volumes:
-        - ${AIRFLOW_PROJ_DIR}/logs:
+        - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
     command: celery flower
     networks:
         - airflow
