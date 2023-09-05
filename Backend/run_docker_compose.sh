@@ -17,5 +17,5 @@ source ./init_path_vars.sh
 
 # Create the "outside" network
 docker network create outside
-docker-compose build
+sudo docker-compose build
 docker-compose up

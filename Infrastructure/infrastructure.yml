@@ -460,7 +460,7 @@ Resources:
           cd /home/ubuntu/Weather_Medoc_Vineyards/Backend
           sudo gdown --fuzzy ${FileEnvPrdBack}
           sudo mv -f env_backend .env
-          sudo ./run_docker_compose.sh
+          ./run_docker_compose.sh
           rm .env         
 
 #Scaling Group
