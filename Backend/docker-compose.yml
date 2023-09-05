@@ -226,6 +226,7 @@ services:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
         - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/plugins
         - /var/run/docker.sock:/var/run/docker.sock
     # entrypoint: /bin/bash
     command: 
@@ -297,6 +298,7 @@ services:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
         - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/plugins
         - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
     depends_on:
@@ -335,6 +337,7 @@ services:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
         - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/plugins
         - /var/run/docker.sock:/var/run/docker.sock
     command: celery worker -H worker_1_name
     depends_on:  
@@ -373,6 +376,7 @@ services:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
         - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/plugins
         - /var/run/docker.sock:/var/run/docker.sock
     command: celery worker -H worker_2_name
     depends_on:  
@@ -409,6 +413,7 @@ services:
         - ${AIRFLOW_PROJ_DIR}/dags:/opt/airflow/dags
         - ${AIRFLOW_PROJ_DIR}/logs:/opt/airflow/logs
         - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/files
+        - ${AIRFLOW_PROJ_DIR}/files:/opt/airflow/plugins
         - /var/run/docker.sock:/var/run/docker.sock
     depends_on:  
       airflow_postgresql:
