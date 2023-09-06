@@ -464,7 +464,7 @@ Resources:
           rm .env         
 
 #Scaling Group
-  PubicScalingGroup:
+  PublicScalingGroup:
       DependsOn: PublicTargetGroup
       Type: AWS::AutoScaling::AutoScalingGroup
       Properties:
