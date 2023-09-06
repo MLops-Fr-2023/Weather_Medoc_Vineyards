@@ -281,7 +281,7 @@ def main():
                      \n- API logs
                      \n- MLflow artefacts (description follows)
                      \nThe use of this S3 bucket requires the creation of an endpoint and the association of the
-                     ecessary and sufficient rights to the machines communicating with it.
+                     necessary and sufficient rights to the machines communicating with it.
                      \n
                      \nIn order to communicate with the outside world, we are integrating an Internet Gateway
                      into our VPC.
@@ -290,11 +290,18 @@ def main():
                      Translator (NAT). We also incorporate NATs into the public sub-networks.
                      \n
                      \nFinally, to enable the Internet Gateway - Public Subnet - Private Subnet to communicate with each
-                     other, we set up routing tables and associated routes.""")
+                     other, we set up routing tables and associated routes.
+                     \n
+                     \n The frontend is also used as a bastion host, to manage access to the backend. Like this external
+                     network can't access to the critical data and API. The access to the backend is garantee
+                     with the ssh key.
+                     """)
             with st.expander("Within the description, here a visualization of the Network architecture:"):
                 col1, col2, col3 = st.columns([0.5, 2, 0.5])
                 with col2:
                     st.image(images_path + 'network.jpg',
+                             channels="RGB", output_format="auto", use_column_width='auto')
+                    st.image(images_path + 'bastion.jpg',
                              channels="RGB", output_format="auto", use_column_width='auto')
         st.markdown("""---""")
 
