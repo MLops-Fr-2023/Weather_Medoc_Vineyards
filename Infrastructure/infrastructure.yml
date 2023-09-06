@@ -17,7 +17,7 @@ Parameters:
     Description: The AMI identifier to deploy.
   S3BucketName:
     Type: String
-    Default: wmC-storage-prod
+    Default: wmc-storage-prod
     Description: Enter the name for the S3 bucket.
   FileEnvPrdBack:
     Type: String
@@ -509,14 +509,14 @@ Resources:
 
   PrivateTargetGroup: 
       Type: AWS::ElasticLoadBalancingV2::TargetGroup
-      Properties: 
+      Properties:
         Port: 8000
         Protocol: HTTP
         VpcId: !Ref VPCWMC
 
-  PrivateTargetGroupAirflow: 
+  PrivateTargetGroupAirflow:
       Type: AWS::ElasticLoadBalancingV2::TargetGroup
-      Properties: 
+      Properties:
         Port: 8080
         Protocol: HTTP
         VpcId: !Ref VPCWMC
