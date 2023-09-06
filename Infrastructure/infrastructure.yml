@@ -389,10 +389,10 @@ Resources:
 
 # IAM Rôle for S3_access_full
 
-  S3FullAccessRole:
+  S3FullAccessJD:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: S3FullAccessRole
+      RoleName: S3FullAccessJD
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -408,7 +408,7 @@ Resources:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
-        - !Ref S3FullAccessRole
+        - !Ref S3FullAccessJD
 
   PublicLaunchConfig: 
     Type: AWS::AutoScaling::LaunchConfiguration
