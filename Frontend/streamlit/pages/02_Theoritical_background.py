@@ -6,7 +6,7 @@ tools.set_page_config()
 images_path = tools.get_images_path()
 page_intro = "Introduction"
 page_data_ctxt = "Data context"
-page_api_db = "API and SQL database"
+page_api_db = "API - DB - Model"
 page_model_tracking = "Model tracking"
 page_infrastruct = "Infrastructure"
 page_transformers = "Transformers"
@@ -235,8 +235,10 @@ def main():
                     - launched
                       - automatically on every change on Pull Requests
                       - manually on branch develop (usually a pull request merged)
-                    - data validation with pydantic
                     """)
+
+        st.markdown("## Components interactions")
+        st.image(images_path + 'principles_schema.jpg', channels="RGB", output_format="JPEG", width=1200)
 
     if choice == page_infrastruct:
         col1, col2, col3 = st.columns([0.5, 8, 0.5])
