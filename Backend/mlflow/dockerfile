@@ -1,0 +1,9 @@
+FROM continuumio/miniconda3
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y apt-utils && \
+    pip install --upgrade pip && \
+    apt-get install -y git
+
+RUN pip install mlflow psycopg2-binary pymysql boto3

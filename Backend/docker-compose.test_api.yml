@@ -1,0 +1,123 @@
+version: '3.9'
+
+networks:
+  proxy:
+    driver: bridge
+  backend:
+    driver: bridge
+  mlflow:
+    driver: bridge
+
+
+volumes:
+  db_datapg_postresql_mlflow: 
+  db_logs_postresql_mlflow: 
+  mlrun_data: 
+  db_data_mysql:
+
+
+services:
+  api_pytest:
+    build:
+      context: ./api
+    container_name: api_pytest
+    networks:
+      - backend
+      - mlflow
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      WEATHER_API_KEY: ${WEATHER_API_KEY}
+      DB_ENV: ${DB_ENV}
+      FILE_ID: ${FILE_ID}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}      
+      MODEL_INFERENCE: ${MODEL_INFERENCE}
+      FCST_HISTORY: ${FCST_HISTORY}
+      FCST_HORIZON: ${FCST_HORIZON}
+      URL_HISTORICAL: ${URL_HISTORICAL}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      DB_MYSQL_USER: ${DB_MYSQL_USER}
+      DB_MYSQL_HOST: ${DB_MYSQL_HOST}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+      BUCKET_NAME: ${BUCKET_NAME}
+      MLFLOW_SERVER_PORT: ${MLFLOW_SERVER_PORT}
+      TERM: ${TERM}
+      PATH_ARTIFACT_INFERENCE: ${PATH_ARTIFACT_INFERENCE}
+      S3_ROOT_INFERENCE: ${S3_ROOT_INFERENCE}  
+    ports:
+      - 8000:8000    
+    command: pytest --verbose
+
+  mlflow_postgresql:
+    restart: always
+    image: postgres:13
+    container_name: mlflow_postgresql
+    expose:
+        - 5432
+    environment:
+      MLFLOW_MUID: ${MLFLOW_MUID}
+      MLFLOW_MGID: ${MLFLOW_MGID}
+      POSTGRES_PORT: ${MLFLOW_POSTGRES_PORT}
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB}
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
+      POSTGRES_HOST: ${MLFLOW_POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD} 
+      PGDATA: ${MLFLOW_PGDATA}
+      BACKEND: ${MLFLOW_BACKEND}
+    volumes:
+        - db_datapg_postresql_mlflow:/var/lib/postgresql/data/pgdata
+        - db_logs_postresql_mlflow:/var/lib/postgresql/data/log
+    networks:
+        - mlflow
+    healthcheck:
+      test: pg_isready -h localhost -U $$POSTGRES_USER -d $$POSTGRES_DB -p $$POSTGRES_PORT
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 55
+
+  mlflow_server:
+    restart: always
+    build:
+      context: ./mlflow
+    image: mlflow_server
+    container_name: mlflow_server
+    ports:
+        - 5001:5001
+    environment:
+      MLFLOW_MUID: ${MLFLOW_MUID}
+      MLFLOW_MGID: ${MLFLOW_MGID}
+      POSTGRES_PORT: ${MLFLOW_POSTGRES_PORT}
+      POSTGRES_DB: ${MLFLOW_POSTGRES_DB}
+      POSTGRES_USER: ${MLFLOW_POSTGRES_USER}
+      POSTGRES_HOST: ${MLFLOW_POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PASSWORD}
+      PGDATA: ${MLFLOW_PGDATA}
+      MLFLOW_BACKEND: ${MLFLOW_BACKEND}
+      HOST_MLFLOW_IP: ${HOST_MLFLOW_IP}
+      MLFLOW_PORT: ${MLFLOW_PORT}
+      MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
+      MLFLOW_ARTIFACTS: ${MLFLOW_ARTIFACTS}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+    volumes:
+        - mlrun_data:/mlruns
+    command: 
+        - sh
+        - -c
+        - mlflow server
+            --port $${MLFLOW_PORT}
+            --host $${HOST_MLFLOW_IP}
+            --backend-store-uri $${MLFLOW_BACKEND} 
+            --default-artifact-root $${MLFLOW_ARTIFACTS}
+            --serve-artifacts
+    networks:
+        - proxy
+        - mlflow
+        - backend
+
+
