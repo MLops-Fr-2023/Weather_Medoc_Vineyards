@@ -429,7 +429,7 @@ Resources:
           if [ -d "Weather_Medoc_Vineyards" ]; then
             rm -rf Weather_Medoc_Vineyards
           fi   
-          git clone -b develop https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git          
+          git clone -b 20230906_JDR_fix_forward_ssh https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git          
           cd /home/ubuntu/Weather_Medoc_Vineyards/Frontend
           sudo gdown --fuzzy ${FileEnvPrdFront}
           sudo mv -f env_frontend .env
@@ -456,7 +456,7 @@ Resources:
           if [ -d "Weather_Medoc_Vineyards" ]; then
             rm -rf Weather_Medoc_Vineyards
           fi
-          git clone -b develop https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git          
+          git clone -b 20230906_JDR_fix_forward_ssh https://github.com/MLops-Fr-2023/Weather_Medoc_Vineyards.git          
           cd /home/ubuntu/Weather_Medoc_Vineyards/Backend
           sudo gdown --fuzzy ${FileEnvPrdBack}
           sudo mv -f env_backend .env
@@ -497,6 +497,7 @@ Resources:
       MaxSize: 2
       TargetGroupARNs: 
         - !Ref PrivateTargetGroup
+        - !Ref PrivateTargetGroupAirflow
 
 #Target Groups
   PublicTargetGroup: 
@@ -510,6 +511,13 @@ Resources:
       Type: AWS::ElasticLoadBalancingV2::TargetGroup
       Properties: 
         Port: 8000
+        Protocol: HTTP
+        VpcId: !Ref VPCWMV
+
+  PrivateTargetGroupAirflow: 
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties: 
+        Port: 8080
         Protocol: HTTP
         VpcId: !Ref VPCWMV
 
@@ -587,6 +595,7 @@ Resources:
         DefaultActions:
           - Type: forward
             TargetGroupArn: !Ref PrivateTargetGroup
+            TargetGroupArn: !Ref PrivateTargetGroupAirflow
 
 # S3 BUCKET
   bucket:
