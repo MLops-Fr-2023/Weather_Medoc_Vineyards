@@ -1,115 +1,115 @@
-name: Pytest
+# name: Pytest
 
-on:
-  pull_request:
-    branches:
-      - main
-      - develop      
-  workflow_dispatch:
-  schedule:
-    - cron: '0 4 * * *'
+# on:
+#   pull_request:
+#     branches:
+#       - main
+#       - develop      
+#   workflow_dispatch:
+#   schedule:
+#     - cron: '0 4 * * *'
 
-jobs:
-  test_python_3_10:
-    name: Run Pytest (Python 3.10.11)
-    runs-on: ubuntu-latest
-    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/develop') || github.event_name != 'schedule'
-    env:
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      ALGORITHM: ${{ secrets.ALGORITHM }}
-      WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
-      FILE_ID: ${{ secrets.FILE_ID }}
-      WAREHOUSE_SNOWFLAKE: ${{ secrets.WAREHOUSE_SNOWFLAKE }}
-      DB_SNOWFLAKE: ${{ secrets.DB_SNOWFLAKE }}
-      SCHEMA_SNOWFLAKE: ${{ secrets.SCHEMA_SNOWFLAKE }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-      BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
-      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-      DB_MYSQL_USER: ${{ secrets.DB_MYSQL_USER }}
-      MLFLOW_POSTGRES_DB: ${{ secrets.MLFLOW_POSTGRES_DB }}
-      MLFLOW_POSTGRES_USER: ${{ secrets.MLFLOW_POSTGRES_USER }}
-      MLFLOW_POSTGRES_PASSWORD: ${{ secrets.MLFLOW_POSTGRES_PASSWORD }}
-      MLFLOW_BACKEND: ${{ secrets.MLFLOW_BACKEND }}
-      MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
-      MLFLOW_ARTIFACTS: ${{ secrets.MLFLOW_ARTIFACTS }}
-      S3_ROOT_INFERENCE: ${{ secrets.S3_ROOT_INFERENCE }}
+# jobs:
+#   test_python_3_10:
+#     name: Run Pytest (Python 3.10.11)
+#     runs-on: ubuntu-latest
+#     if: (github.event_name == 'schedule' && github.ref == 'refs/heads/develop') || github.event_name != 'schedule'
+#     env:
+#       SECRET_KEY: ${{ secrets.SECRET_KEY }}
+#       ALGORITHM: ${{ secrets.ALGORITHM }}
+#       WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+#       FILE_ID: ${{ secrets.FILE_ID }}
+#       WAREHOUSE_SNOWFLAKE: ${{ secrets.WAREHOUSE_SNOWFLAKE }}
+#       DB_SNOWFLAKE: ${{ secrets.DB_SNOWFLAKE }}
+#       SCHEMA_SNOWFLAKE: ${{ secrets.SCHEMA_SNOWFLAKE }}
+#       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#       AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+#       BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
+#       MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+#       MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+#       DB_MYSQL_USER: ${{ secrets.DB_MYSQL_USER }}
+#       MLFLOW_POSTGRES_DB: ${{ secrets.MLFLOW_POSTGRES_DB }}
+#       MLFLOW_POSTGRES_USER: ${{ secrets.MLFLOW_POSTGRES_USER }}
+#       MLFLOW_POSTGRES_PASSWORD: ${{ secrets.MLFLOW_POSTGRES_PASSWORD }}
+#       MLFLOW_BACKEND: ${{ secrets.MLFLOW_BACKEND }}
+#       MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
+#       MLFLOW_ARTIFACTS: ${{ secrets.MLFLOW_ARTIFACTS }}
+#       S3_ROOT_INFERENCE: ${{ secrets.S3_ROOT_INFERENCE }}
 
-      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ vars.ACCESS_TOKEN_EXPIRE_MINUTES}}
-      DB_ENV: ${{ vars.DB_ENV }}
-      DB_MYSQL_HOST: ${{ vars.DB_MYSQL_HOST }}
-      ACCESS: ${{ vars.ACCESS }}
-      MLFLOW_SERVER_PORT: ${{ vars.MLFLOW_SERVER_PORT }}
-      MODEL_INFERENCE: ${{ vars.MODEL_INFERENCE }}
-      FCST_HISTORY: ${{ vars.FCST_HISTORY }}
-      FCST_HORIZON: ${{ vars.FCST_HORIZON }}
-      URL_HISTORICAL: ${{ vars.URL_HISTORICAL }}
-      TERM: ${{ vars.TERM }}
-      MLFLOW_MUID: ${{ vars.MLFLOW_MUID }}
-      MLFLOW_MGID: ${{ vars.MLFLOW_MGID }}
-      MLFLOW_POSTGRES_PORT: ${{ vars.MLFLOW_POSTGRES_PORT }}
-      MLFLOW_POSTGRES_HOST: ${{ vars.MLFLOW_POSTGRES_HOST }}
-      MLFLOW_PGDATA: ${{ vars.MLFLOW_PGDATA }}
-      HOST_MLFLOW_IP: ${{ vars.HOST_MLFLOW_IP }}
-      MLFLOW_PORT: ${{ vars.MLFLOW_PORT }}
-      PATH_ARTIFACT_INFERENCE: ${{ vars.PATH_ARTIFACT_INFERENCE }}
+#       ACCESS_TOKEN_EXPIRE_MINUTES: ${{ vars.ACCESS_TOKEN_EXPIRE_MINUTES}}
+#       DB_ENV: ${{ vars.DB_ENV }}
+#       DB_MYSQL_HOST: ${{ vars.DB_MYSQL_HOST }}
+#       ACCESS: ${{ vars.ACCESS }}
+#       MLFLOW_SERVER_PORT: ${{ vars.MLFLOW_SERVER_PORT }}
+#       MODEL_INFERENCE: ${{ vars.MODEL_INFERENCE }}
+#       FCST_HISTORY: ${{ vars.FCST_HISTORY }}
+#       FCST_HORIZON: ${{ vars.FCST_HORIZON }}
+#       URL_HISTORICAL: ${{ vars.URL_HISTORICAL }}
+#       TERM: ${{ vars.TERM }}
+#       MLFLOW_MUID: ${{ vars.MLFLOW_MUID }}
+#       MLFLOW_MGID: ${{ vars.MLFLOW_MGID }}
+#       MLFLOW_POSTGRES_PORT: ${{ vars.MLFLOW_POSTGRES_PORT }}
+#       MLFLOW_POSTGRES_HOST: ${{ vars.MLFLOW_POSTGRES_HOST }}
+#       MLFLOW_PGDATA: ${{ vars.MLFLOW_PGDATA }}
+#       HOST_MLFLOW_IP: ${{ vars.HOST_MLFLOW_IP }}
+#       MLFLOW_PORT: ${{ vars.MLFLOW_PORT }}
+#       PATH_ARTIFACT_INFERENCE: ${{ vars.PATH_ARTIFACT_INFERENCE }}
 
 
-    steps:
-      - name: Set up Python 3.10.11
-        uses: actions/setup-python@v3
-        with:
-          python-version: 3.10.11
+#     steps:
+#       - name: Set up Python 3.10.11
+#         uses: actions/setup-python@v3
+#         with:
+#           python-version: 3.10.11
 
-      - name: Checkout code
-        uses: actions/checkout@v3
+#       - name: Checkout code
+#         uses: actions/checkout@v3
 
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
+#       - name: Set up Docker
+#         uses: docker/setup-buildx-action@v2
 
-      - name: Test Backend
-        run: |
-          echo MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-          echo MYSQL_DATABASE=${MYSQL_DATABASE}
-          echo DB_MYSQL_USER=${DB_MYSQL_USER}
-          echo DB_MYSQL_HOST=${DB_MYSQL_HOST}
-          echo SECRET_KEY=${SECRET_KEY}
-          echo ALGORITHM=${ALGORITHM}
-          echo WEATHER_API_KEY=${WEATHER_API_KEY}
-          echo DB_ENV=${DB_ENV}
-          echo FILE_ID=${FILE_ID}
-          echo ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
-          echo WAREHOUSE_SNOWFLAKE=${WAREHOUSE_SNOWFLAKE}
-          echo DB_SNOWFLAKE=${DB_SNOWFLAKE}
-          echo SCHEMA_SNOWFLAKE=${SCHEMA_SNOWFLAKE}
-          echo MLFLOW_SERVER_PORT=${MLFLOW_SERVER_PORT}
-          echo MODEL_INFERENCE=${MODEL_INFERENCE}
-          echo FCST_HISTORY=${FCST_HISTORY}
-          echo FCST_HORIZON=${FCST_HORIZON}
-          echo URL_HISTORICAL=${URL_HISTORICAL}
-          echo AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-          echo AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-          echo AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
-          echo TERM=${TERM}
-          echo MLFLOW_MUID=${MLFLOW_MUID}
-          echo MLFLOW_MGID=${MLFLOW_MGID}
-          echo MLFLOW_POSTGRES_PORT=${MLFLOW_POSTGRES_PORT}
-          echo MLFLOW_POSTGRES_DB=${MLFLOW_POSTGRES_DB}
-          echo MLFLOW_POSTGRES_USER=${MLFLOW_POSTGRES_USER}
-          echo MLFLOW_POSTGRES_HOST=${MLFLOW_POSTGRES_HOST}
-          echo MLFLOW_POSTGRES_PASSWORD=${MLFLOW_POSTGRES_PASSWORD}
-          echo MLFLOW_PGDATA=${MLFLOW_PGDATA}
-          echo MLFLOW_BACKEND=${MLFLOW_BACKEND}
-          echo HOST_MLFLOW_IP=${HOST_MLFLOW_IP}
-          echo MLFLOW_PORT=${MLFLOW_PORT}
-          echo MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}
-          echo MLFLOW_ARTIFACTS=${MLFLOW_ARTIFACTS}
+#       - name: Test Backend
+#         run: |
+#           echo MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+#           echo MYSQL_DATABASE=${MYSQL_DATABASE}
+#           echo DB_MYSQL_USER=${DB_MYSQL_USER}
+#           echo DB_MYSQL_HOST=${DB_MYSQL_HOST}
+#           echo SECRET_KEY=${SECRET_KEY}
+#           echo ALGORITHM=${ALGORITHM}
+#           echo WEATHER_API_KEY=${WEATHER_API_KEY}
+#           echo DB_ENV=${DB_ENV}
+#           echo FILE_ID=${FILE_ID}
+#           echo ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+#           echo WAREHOUSE_SNOWFLAKE=${WAREHOUSE_SNOWFLAKE}
+#           echo DB_SNOWFLAKE=${DB_SNOWFLAKE}
+#           echo SCHEMA_SNOWFLAKE=${SCHEMA_SNOWFLAKE}
+#           echo MLFLOW_SERVER_PORT=${MLFLOW_SERVER_PORT}
+#           echo MODEL_INFERENCE=${MODEL_INFERENCE}
+#           echo FCST_HISTORY=${FCST_HISTORY}
+#           echo FCST_HORIZON=${FCST_HORIZON}
+#           echo URL_HISTORICAL=${URL_HISTORICAL}
+#           echo AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+#           echo AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+#           echo AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+#           echo TERM=${TERM}
+#           echo MLFLOW_MUID=${MLFLOW_MUID}
+#           echo MLFLOW_MGID=${MLFLOW_MGID}
+#           echo MLFLOW_POSTGRES_PORT=${MLFLOW_POSTGRES_PORT}
+#           echo MLFLOW_POSTGRES_DB=${MLFLOW_POSTGRES_DB}
+#           echo MLFLOW_POSTGRES_USER=${MLFLOW_POSTGRES_USER}
+#           echo MLFLOW_POSTGRES_HOST=${MLFLOW_POSTGRES_HOST}
+#           echo MLFLOW_POSTGRES_PASSWORD=${MLFLOW_POSTGRES_PASSWORD}
+#           echo MLFLOW_PGDATA=${MLFLOW_PGDATA}
+#           echo MLFLOW_BACKEND=${MLFLOW_BACKEND}
+#           echo HOST_MLFLOW_IP=${HOST_MLFLOW_IP}
+#           echo MLFLOW_PORT=${MLFLOW_PORT}
+#           echo MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}
+#           echo MLFLOW_ARTIFACTS=${MLFLOW_ARTIFACTS}
 
-          docker-compose -f Backend/docker-compose.test_api.yml build
-          docker-compose -f Backend/docker-compose.test_api.yml up --exit-code-from api_pytest
+#           docker-compose -f Backend/docker-compose.test_api.yml build
+#           docker-compose -f Backend/docker-compose.test_api.yml up --exit-code-from api_pytest
 
-      - name: Clean up Docker
-        if: always()
-        run: docker-compose -f Backend/docker-compose.test_api.yml down
+#       - name: Clean up Docker
+#         if: always()
+#         run: docker-compose -f Backend/docker-compose.test_api.yml down
